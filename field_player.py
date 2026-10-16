@@ -25,6 +25,9 @@ from fs42.reception import (
 )
 from fs42.live_schedule_agent import LiveScheduleAgent
 from fs42.command_executor import execute_command
+from fs42.box import clock
+from fs42.box.config import is_box, load_box_config
+from fs42.box.sync import BoxSync, reload_requested
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s:%(name)s:%(message)s", level=logging.INFO
@@ -40,6 +43,12 @@ STATE_SHELVE = "runtime/player_state.bin"
 api_commands_queue: multiprocessing.Queue = None
 
 def input_check():
+    if reload_requested.is_set():
+        # the box sync wrote new configs or a new rundown; pick them up like upstream's reload_data
+        reload_requested.clear()
+        StationManager()._reload_stations()
+        LiquidManager().reload_schedules()
+
     if api_commands_queue:
         q_message = None
         try:
@@ -106,7 +115,7 @@ def main_loop(transition_fn, shutdown_queue=None, api_proc=None, schedule_lock=N
     # set up the live schedule agent if configured
     schedule_agent = None
     agent_conf = manager.server_conf.get("schedule_agent")
-    if agent_conf and schedule_lock:
+    if agent_conf and schedule_lock and not is_box():
         schedule_agent = LiveScheduleAgent(agent_conf, schedule_lock)
         logger.info("Live schedule agent is active")
     else:
@@ -199,7 +208,7 @@ def main_loop(transition_fn, shutdown_queue=None, api_proc=None, schedule_lock=N
             player.stop_player()
             player_state =  execute_command(channel_conf, input_check)
         elif not skip_play:
-            now = datetime.datetime.now()
+            now = clock.now()
 
             week_day = DAYS[now.weekday()]
             hour = now.hour
@@ -210,7 +219,7 @@ def main_loop(transition_fn, shutdown_queue=None, api_proc=None, schedule_lock=N
             )
 
             player_state = player.play_slot(
-                channel_conf["network_name"], datetime.datetime.now()
+                channel_conf["network_name"], clock.now()
             )
 
         logger.debug(f"Got player outcome:{player_state.status}")
@@ -388,6 +397,12 @@ if __name__ == "__main__":
             trans_fn = none_change_effect
         # else keep short change as default
 
+    box_sync = None
+    if is_box():
+        # a box needs the server's configs and rundown before StationManager loads anything
+        box_sync = BoxSync(load_box_config())
+        box_sync.initial_sync()
+
     if not args.no_server:
         # Set up shutdown queue and start API server as a background process
         shutdown_queue = multiprocessing.Queue()
@@ -405,6 +420,9 @@ if __name__ == "__main__":
         shutdown_queue = None
         api_commands_queue = None
         api_proc = None
+
+    if box_sync:
+        box_sync.start_poller()
 
     schedule_lock = multiprocessing.Lock()
 
