@@ -5,12 +5,15 @@ from typing import List, Optional
 import os
 import logging
 import mimetypes
+from fs42.box.config import is_box
 from fs42.station_manager import StationManager
 from fs42.nfo_agent import NFOAgent
 from .tmdb_helper import get_tmdb_helper
 from .player import connected_command_queue
 
 router = APIRouter(prefix="/ppv", tags=["ppv"])
+# the player commands, kept apart so a box can serve them locally and proxy the listings
+commands_router = APIRouter(prefix="/ppv", tags=["ppv"])
 
 # Pydantic Models
 class NFOData(BaseModel):
@@ -274,7 +277,7 @@ async def get_ppv_image(channel_number: int, filename: str):
     )
 
 
-@router.post("/{channel_number}/play_file", response_model=PlayFileResponse)
+@commands_router.post("/{channel_number}/play_file", response_model=PlayFileResponse)
 async def play_file(channel_number: int, play_request: PlayFileRequest, request: Request):
     """
     Play a file by sending a command to the player via the command queue.
@@ -296,8 +299,8 @@ async def play_file(channel_number: int, play_request: PlayFileRequest, request:
             detail=f"Channel {channel_number} not found"
         )
 
-    # Validate that the file exists
-    if not os.path.exists(play_request.file_path):
+    # Validate that the file exists - a box streams it from the server, so only the server can check
+    if not is_box() and not os.path.exists(play_request.file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"File not found: {play_request.file_path}"
@@ -331,7 +334,7 @@ async def play_file(channel_number: int, play_request: PlayFileRequest, request:
             detail=f"Failed to send play command: {str(e)}"
         )
 
-@router.post("/{channel_number}/key/{key_name}")
+@commands_router.post("/{channel_number}/key/{key_name}")
 async def send_key(channel_number: int, key_name: str, request: Request):
     """Send a keypress to the PPV web channel."""
     allowed_keys = {"PageUp", "PageDown", "Enter"}

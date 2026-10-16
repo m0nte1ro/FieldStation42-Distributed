@@ -16,7 +16,11 @@ sys.path.append(parent)
 
 from fs42.station_manager import StationManager, StationConfigError
 from fs42.schedule_keeper import start_schedule_keeper
+from fs42.box.config import is_box, load_box_config
+from fs42.box.proxy import build_proxy_router
 from .api import routers
+from .api.player import router as player_router
+from .api.ppv import commands_router as ppv_commands_router
 
 _shutdown_queue = None
 player_command_queue = None
@@ -46,35 +50,46 @@ async def _lifespan(app):
         asyncio.get_event_loop().create_task(shutdown_monitor())
     yield
 
-# Create FastAPI app
-fapi = FastAPI(title="FieldStation42 API", lifespan=_lifespan)
-
-
-@fapi.exception_handler(StationConfigError)
 async def _station_config_error_handler(request: Request, exc: StationConfigError):
     # Configuration problems are the operator's to fix, not a server fault -
     # report them instead of letting them take the request (or the process) down
     logging.getLogger("FS42SERVER").error(f"Station configuration error: {exc}")
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
-@fapi.get("/")
 async def root():
     return FileResponse("fs42/fs42_server/static/index.html", headers=REVALIDATE)
 
-@fapi.get("/remote")
 async def remote():
     return FileResponse("fs42/fs42_server/static/remote.html", headers=REVALIDATE)
 
-@fapi.get('/favicon.ico', include_in_schema=False)
 async def favicon():
     return FileResponse("fs42/fs42_server/static/favicon.ico")
 
-# Include routers from the api package
-for router in routers:
-    fapi.include_router(router)
+
+def build_app(box_config):
+    app = FastAPI(title="FieldStation42 API", lifespan=_lifespan)
+    app.state.player_command_queue = None
+    app.add_exception_handler(StationConfigError, _station_config_error_handler)
+    if box_config:
+        # a box handles its own player and PPV commands; every page and data route lives on the server
+        for router in (player_router, ppv_commands_router, build_proxy_router(box_config["server_url"])):
+            app.include_router(router)
+        return app
+
+    app.get("/")(root)
+    app.get("/remote")(remote)
+    app.get("/favicon.ico", include_in_schema=False)(favicon)
+    for router in routers:
+        app.include_router(router)
+    return app
+
+
+fapi = build_app(load_box_config() if is_box() else None)
 
 
 def _mount_static():
+    if is_box():
+        return
 
     follow_symlink = StationManager().server_conf.get("follow_static_symlinks", False)
     if follow_symlink:

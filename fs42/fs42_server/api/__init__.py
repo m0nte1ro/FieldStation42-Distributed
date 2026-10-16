@@ -6,7 +6,7 @@ from .player import router as player_router
 from .build import router as build_router
 from .themes import router as themes_router
 from .stations import router as stations_router
-from .ppv import router as ppv_router
+from .ppv import router as ppv_router, commands_router as ppv_commands_router
 from .media import router as media_router
 from .box import router as box_router
 
@@ -20,6 +20,7 @@ routers = [
     themes_router,
     stations_router,
     ppv_router,
+    ppv_commands_router,
     media_router,
     box_router,
 ]
