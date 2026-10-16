@@ -1,0 +1,101 @@
+import datetime
+import json
+import sys
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+sys.modules.setdefault("ffmpeg", MagicMock())
+sys.modules.setdefault("moviepy", MagicMock())
+sys.modules.setdefault("moviepy.editor", MagicMock())
+
+from shared.rundown import (  # noqa: E402
+    BlockPlanEntry, ScheduleNotFound, ScheduleQueryNotInBounds, block_at, decode_rundown,
+    is_autobump_url, play_point, strip_autobump,
+)
+
+START = datetime.datetime(2026, 10, 12, 20, 0)
+STANDARD = {"network_type": "standard"}
+
+
+def _block(start=START, minutes=30, title="Cartoons", plan=None):
+    return SimpleNamespace(
+        start_time=start, end_time=start + datetime.timedelta(minutes=minutes), title=title,
+        plan=plan or [BlockPlanEntry("show.mp4", 0, 1797)],
+    )
+
+
+def test_inside_plan_returns_the_scheduled_entry():
+    point = play_point(STANDARD, [_block()], START + datetime.timedelta(seconds=100))
+    assert point.index == 0 and point.offset == 100 and point.plan[0].path == "show.mp4"
+
+
+def test_gap_after_plan_plays_brb_until_block_end():
+    when = START + datetime.timedelta(seconds=1798)
+    point = play_point(dict(STANDARD, be_right_back_media="runtime/brb.png"), [_block()], when)
+    assert [(e.path, e.duration) for e in point.plan] == [("runtime/brb.png", 2)]
+    assert point.index == 0 and point.offset == 0 and point.block_title == "Cartoons"
+
+
+def test_gap_without_brb_still_returns_nothing():
+    assert play_point(STANDARD, [_block()], START + datetime.timedelta(seconds=1798)) is None
+
+
+def test_second_block_is_found_by_time():
+    later = _block(START + datetime.timedelta(minutes=30), title="News",
+                   plan=[BlockPlanEntry("a.mp4", 0, 600), BlockPlanEntry("b.mp4", 0, 1200)])
+    point = play_point(STANDARD, [_block(), later], START + datetime.timedelta(minutes=45))
+    assert (point.block_title, point.index, point.offset) == ("News", 1, 300)
+
+
+def test_streaming_channel_plays_its_streams_without_a_schedule():
+    station = {"network_type": "streaming", "streams": [{"url": "https://x/live.m3u8", "duration": 30}]}
+    point = play_point(station, [], START)
+    assert point.plan[0].path == "https://x/live.m3u8" and point.plan[0].is_stream
+
+
+def test_no_schedule_and_out_of_bounds_raise():
+    with pytest.raises(ScheduleNotFound):
+        block_at([], START)
+    with pytest.raises(ScheduleQueryNotInBounds):
+        block_at([_block()], START + datetime.timedelta(hours=2))
+
+
+def test_autobump_urls_are_recognised_and_stripped():
+    url = ":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=X"
+    assert is_autobump_url(url) and not is_autobump_url("catalog/a.mp4")
+    assert strip_autobump(url) == "http://127.0.0.1:4242/static/bump/bump.html?title=X"
+
+
+def test_decode_rundown_round_trips_the_server_encoding():
+    from fs42.box.rundown import block_to_json
+    from fs42.catalog_entry import CatalogEntry
+    from fs42.liquid_blocks import LiquidBlock
+
+    block = LiquidBlock(CatalogEntry("catalog/toons/a b#1.mp4", 1320, "sitcom"), START,
+                        START + datetime.timedelta(minutes=30), "A B", "standard", {"bump_dir": "bumps"})
+    block.plan = [BlockPlanEntry("catalog/toons/a b#1.mp4", 0, 660),
+                  BlockPlanEntry("catalog/toons/commercials/c.mp4", 0, 30, content_type="commercial")]
+    data = json.loads(json.dumps({"stations": {"Toons": [block_to_json(block)]}}))
+    decoded = decode_rundown(data)["Toons"][0]
+    assert (decoded.start_time, decoded.end_time, decoded.title) == (block.start_time, block.end_time, "A B")
+    assert decoded.content.path == "catalog/toons/a b#1.mp4" and decoded.liquid_type == "LiquidBlock"
+    when = START + datetime.timedelta(seconds=600)
+    server, client = play_point(STANDARD, [block], when), play_point(STANDARD, [decoded], when)
+    assert (client.index, client.offset) == (server.index, server.offset)
+    assert [e.toJSON() for e in client.plan] == [e.toJSON() for e in server.plan]
+
+
+def test_server_play_point_delegates_to_shared():
+    from fs42.liquid_manager import LiquidManager
+
+    manager = LiquidManager.__new__(LiquidManager)
+    manager.schedules = {"Toons": [_block()]}
+    stations = MagicMock()
+    stations.return_value.station_by_name.return_value = STANDARD
+    when = START + datetime.timedelta(seconds=100)
+    with patch("fs42.liquid_manager.StationManager", stations):
+        server = manager.get_play_point("Toons", when)
+    shared = play_point(STANDARD, [_block()], when)
+    assert (server.index, server.offset, server.block_title) == (shared.index, shared.offset, shared.block_title)

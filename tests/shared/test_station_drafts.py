@@ -2,8 +2,8 @@ import json
 import pytest
 from unittest.mock import patch
 
-from fs42.station_manager import StationManager, StationConfigError
-from fs42.station_io import StationIO
+from shared.stations.manager import StationManager, StationConfigError
+from shared.stations.io import StationIO
 
 
 def _write_station(confs_dir, filename, station_conf):
@@ -53,7 +53,7 @@ class TestDraftConfigsAreSkipped:
 
     def _make_manager(self, confs_dir):
         station_io = _station_io_for(confs_dir)
-        with patch("fs42.station_manager.StationIO", return_value=station_io):
+        with patch("shared.stations.manager.StationIO", return_value=station_io):
             return StationManager()
 
     def test_missing_content_dir_skips_only_that_station(self, tmp_path):

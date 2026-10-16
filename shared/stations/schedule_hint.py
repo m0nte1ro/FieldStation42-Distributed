@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 import re
 
-from fs42 import timings
-from fs42 import station_manager
+from shared import timings
+from shared.stations import manager as station_manager
 
 # all temporal hints should implement this interface
 class TemporalHint:

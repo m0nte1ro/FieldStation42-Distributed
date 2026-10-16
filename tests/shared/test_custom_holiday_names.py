@@ -2,11 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
-# station_manager has to be imported before station_io. fs42.station_io imports
+# station_manager has to be imported before station_io. shared.stations.io imports
 # schedule_hint, which imports station_manager, which imports StationIO back - so
 # reaching station_io first hits its class body before it has run.
-from fs42.station_manager import StationManager, StationConfigError
-from fs42.station_io import StationIO
+from shared.stations.manager import StationManager, StationConfigError
+from shared.stations.io import StationIO
 
 
 def _load(custom_holidays, day_parts=None):
@@ -18,7 +18,7 @@ def _load(custom_holidays, day_parts=None):
     if day_parts:
         config_data["day_parts"] = day_parts
     with patch.object(StationIO, "load_main_config", return_value=config_data):
-        with patch("fs42.station_io.glob.glob", return_value=[]):
+        with patch("shared.stations.io.glob.glob", return_value=[]):
             return StationManager()
 
 

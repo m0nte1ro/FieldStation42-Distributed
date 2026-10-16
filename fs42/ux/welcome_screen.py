@@ -2,7 +2,7 @@ from textual.app import Screen, ComposeResult
 from textual.widgets import Button, Header, Markdown
 from textual.containers import Horizontal
 
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.catalog import ShowCatalog
 from fs42.liquid_manager import LiquidManager
 from fs42.ux.dialogs import QuitScreen

@@ -12,7 +12,7 @@ class MetadataIO:
 
     @staticmethod
     def _default_db_path():
-        from fs42.station_manager import StationManager
+        from shared.stations.manager import StationManager
         return StationManager().server_conf["db_path"]
 
     @staticmethod

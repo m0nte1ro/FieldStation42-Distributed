@@ -2,31 +2,13 @@ import datetime
 import logging
 
 from fs42.box.config import is_box
-from fs42.station_manager import StationManager
-from fs42.liquid_blocks import LiquidBlock, BlockPlanEntry
+from shared.stations.manager import StationManager
+from fs42.liquid_blocks import LiquidBlock
+from shared.rundown import PlayPoint, ScheduleNotFound, ScheduleQueryNotInBounds, block_at, play_point
 from fs42.catalog import ShowCatalog
 from fs42.sequence_api import SequenceAPI
 from fs42.liquid_api import LiquidAPI
 from fs42.schedule_lock import schedule_write_lock
-
-
-class ScheduleQueryNotInBounds(Exception):
-    pass
-
-
-class ScheduleNotFound(Exception):
-    pass
-
-
-class PlayPoint:
-    def __init__(self, index, offset, plan, block_title="Unknown"):
-        self.index = index
-        self.offset = offset
-        self.plan: BlockPlanEntry = plan
-        self.block_title = block_title
-
-    def __str__(self):
-        return f"PlayPoint: title={self.block_title} index={self.index} offet={self.offset} plan_len={len(self.plan)}"
 
 
 class LiquidManager(object):
@@ -158,63 +140,13 @@ class LiquidManager(object):
         return summaries
 
     def get_programming_block(self, network_name, when):
-        (start, end) = self.get_extents(network_name)
-
-        # handle no schedule
-        if start is None or end is None:
-            raise ScheduleNotFound(f"Schedule doesn't exist for {network_name}")
-        # handle not in bounds
-        elif start > when or end < when:
-            raise ScheduleQueryNotInBounds(
-                f"Query for {network_name} programming at {when} failes because schedule is from {start} to {end}"
-            )
-        # handle expected case
-        else:
-            # go through each block until we find the correct position (when > block start and < block end)
-            for _block in self.schedules[network_name]:
-                if when >= _block.start_time and when <= _block.end_time:
-                    # this is it, no need to keep going
-                    return _block
-
-    def _build_stream_point(self, station_conf, when):
-        # get the station conf
-
-        # get an entry
-        conf_streams = station_conf["streams"]
-        block_plan = []
-        for stream in conf_streams:
-            bpe = BlockPlanEntry(stream["url"], 0, stream["duration"], is_stream=True, content_type="stream", media_type=stream.get("media_type", "video"))
-            block_plan.append(bpe)
-
-        pp = PlayPoint(0, 0, block_plan)
-        return pp
+        self.get_extents(network_name)  # unknown station raises ValueError, as before
+        return block_at(self.schedules[network_name], when)
 
     def get_play_point(self, network_name, when):
         station_conf = StationManager().station_by_name(network_name)
-        if station_conf["network_type"] == "streaming":
-            return self._build_stream_point(station_conf, when)
-
-        # get the block and get plan
-        _block: LiquidBlock = self.get_programming_block(network_name, when)
-
-        # find index in block plan
-        found_index = 0
-        current_mark = _block.start_time
-        for entry in _block.plan:
-            next_mark = current_mark + datetime.timedelta(seconds=entry.duration)
-            if next_mark > when:
-                # then this is the index - calc offset
-                diff = when - current_mark
-                return PlayPoint(found_index, diff.total_seconds(), _block.plan, _block.title)
-            current_mark = next_mark
-            found_index += 1
-
-        # the plan ran out before the block did - cover the gap with be right back media if the station has it
-        gap = (_block.end_time - when).total_seconds()
-        brb = station_conf.get("be_right_back_media")
-        if brb and gap > 0:
-            return PlayPoint(0, 0, [BlockPlanEntry(brb, 0, gap, content_type="bump")], _block.title)
-        return None
+        blocks = self.schedules.get(network_name, [])
+        return play_point(station_conf, blocks, when)
 
     def print_schedule(self, network_name, go_deep=False):
         for _block in self.schedules[network_name]:

@@ -5,8 +5,8 @@ import pytest
 
 from fs42.catalog_entry import CatalogEntry
 from fs42.hint_agent import HintAgent
-from fs42.station_io import StationIO
-from fs42.station_manager import StationManager
+from shared.stations.io import StationIO
+from shared.stations.manager import StationManager
 
 # station_io normalizes meta_hint tags into content_dir relative paths before
 # HintAgent ever sees them, so these are written in the post-normalized form
@@ -30,7 +30,7 @@ class TestHintAgent:
     def _make_manager(self, custom_holidays):
         config_data = {"server_port": 4242, "custom_holidays": custom_holidays}
         with patch.object(StationIO, "load_main_config", return_value=config_data):
-            with patch("fs42.station_io.glob.glob", return_value=[]):
+            with patch("shared.stations.io.glob.glob", return_value=[]):
                 return StationManager()
 
     def _filter(self, meta_hints, when):

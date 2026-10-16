@@ -6,7 +6,7 @@ import os
 import logging
 import mimetypes
 from fs42.box.config import is_box
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.nfo_agent import NFOAgent
 from .tmdb_helper import get_tmdb_helper
 from .player import connected_command_queue

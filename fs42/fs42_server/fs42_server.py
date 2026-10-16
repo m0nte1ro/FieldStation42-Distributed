@@ -14,7 +14,7 @@ parent = os.path.abspath(os.path.join(cwd, os.pardir))
 sys.path.append(cwd)
 sys.path.append(parent)
 
-from fs42.station_manager import StationManager, StationConfigError
+from shared.stations.manager import StationManager, StationConfigError
 from fs42.schedule_keeper import start_schedule_keeper
 from fs42.box.config import is_box, load_box_config
 from fs42.box.proxy import build_proxy_router

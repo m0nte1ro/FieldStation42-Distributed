@@ -13,7 +13,7 @@ from PySide6.QtCore import QRectF
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.osd.content_classifier import ContentType, classify_current_content
 from fs42.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
 

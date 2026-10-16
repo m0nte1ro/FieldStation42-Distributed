@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich import style
 
 from fs42.catalog import ShowCatalog
-from fs42.station_manager import StationManager, StationConfigError
+from shared.stations.manager import StationManager, StationConfigError
 from fs42.liquid_manager import LiquidManager
 from fs42.liquid_schedule import LiquidSchedule
 from fs42.fluid_builder import FluidBuilder

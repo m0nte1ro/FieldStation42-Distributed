@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from fs42.box import proxy  # noqa: E402
 from fs42.fs42_server import fs42_server  # noqa: E402
-from fs42.station_manager import StationManager  # noqa: E402
+from shared.stations.manager import StationManager  # noqa: E402
 
 BOX = {"server_url": "http://server:4242", "media": {"method": "http"}, "main_config": {}}
 PPV = {"network_name": "Movies", "network_type": "web", "channel_number": 7}

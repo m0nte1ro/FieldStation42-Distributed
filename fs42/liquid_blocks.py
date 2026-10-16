@@ -2,9 +2,9 @@ import datetime
 import os.path
 import random
 
-from fs42 import timings
+from shared import timings
 from fs42.reel_cutter import ReelCutter
-from fs42.block_plan import BlockPlanEntry
+from shared.rundown import BlockPlanEntry
 from fs42.fluid_builder import FluidBuilder
 from fs42.media_processor import MediaProcessor
 

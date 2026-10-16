@@ -9,7 +9,7 @@ sys.modules.setdefault("ffmpeg", MagicMock())
 sys.modules.setdefault("moviepy", MagicMock())
 sys.modules.setdefault("moviepy.editor", MagicMock())
 
-from fs42.block_plan import BlockPlanEntry  # noqa: E402
+from shared.rundown import BlockPlanEntry  # noqa: E402
 from fs42.box import clock  # noqa: E402
 from fs42.box.rundown import block_from_json, block_to_json, box_meta, load_rundown  # noqa: E402
 from fs42.catalog_entry import CatalogEntry  # noqa: E402
@@ -52,7 +52,7 @@ def _web_block():
 
 def _play_point(block, when):
     manager = LiquidManager.__new__(LiquidManager)
-    manager.get_programming_block = lambda name, at: block
+    manager.schedules = {"Toons": [block]}
     stations = MagicMock()
     stations.return_value.station_by_name.return_value = {"network_type": "standard"}
     with patch("fs42.liquid_manager.StationManager", stations):

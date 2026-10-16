@@ -3,7 +3,7 @@ from textual.widgets import Button, Header, Select, DataTable
 from textual.containers import Horizontal, Vertical
 from textual import work
 
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.catalog import ShowCatalog
 from fs42.ux.dialogs import SelectStationErr, LoadingScreen
 

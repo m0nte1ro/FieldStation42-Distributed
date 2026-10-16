@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from datetime import datetime
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.liquid_api import LiquidAPI
 from fs42.metadata_io import MetadataIO
 

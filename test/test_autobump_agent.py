@@ -2,7 +2,7 @@ import pytest
 import urllib.parse
 from fs42.autobump_agent import AutoBumpAgent
 from fs42.catalog_entry import CatalogEntry
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 
 class TestAutoBumpAgent:

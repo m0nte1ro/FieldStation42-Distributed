@@ -1,9 +1,9 @@
 from unittest.mock import patch
 from datetime import datetime
-from fs42.timings import MONTHS
-from fs42.station_manager import StationManager
-from fs42.station_io import StationIO
-from fs42.schedule_hint import WeekNumberHint, MonthHint, QuarterHint, CustomHolidayHint, RangeHint
+from shared.timings import MONTHS
+from shared.stations.manager import StationManager
+from shared.stations.io import StationIO
+from shared.stations.schedule_hint import WeekNumberHint, MonthHint, QuarterHint, CustomHolidayHint, RangeHint
 import pytest
 
 class TestWeekNumberHint:
@@ -84,7 +84,7 @@ class TestCustomHolidayHint:
     def _make_manager(self, custom_holidays):
         config_data = {"server_port": 4242, "custom_holidays": custom_holidays}
         with patch.object(StationIO, 'load_main_config', return_value=config_data):
-            with patch('fs42.station_io.glob.glob', return_value=[]):
+            with patch('shared.stations.io.glob.glob', return_value=[]):
                 return StationManager()
 
     def test_fixed_date_is_literal(self):

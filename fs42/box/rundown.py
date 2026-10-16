@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 
-from fs42.block_plan import BlockPlanEntry
+from shared.rundown import BlockPlanEntry
 from fs42.catalog_entry import CatalogEntry
 from fs42.liquid_io import LiquidIO
 from fs42.metadata_io import MetadataIO

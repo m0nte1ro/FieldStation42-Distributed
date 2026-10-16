@@ -8,9 +8,9 @@ import datetime
 from pathlib import Path
 
 from fs42.box.config import is_box
-from fs42.config_processor import ConfigProcessor
-from fs42 import schedule_hint
-from fs42 import timings
+from shared.stations.config_processor import ConfigProcessor
+from shared.stations import schedule_hint
+from shared import timings
 
 
 class StationIO:
@@ -42,7 +42,7 @@ class StationIO:
         self._l = logging.getLogger("STATIONIO")
         self.confs_dir = "confs/"
         self.main_config_path = "confs/main_config.json"
-        self.schema_path = "fs42/station_config_schema.json"
+        self.schema_path = "shared/stations/schema.json"
 
     def load_schema(self):
         if os.path.exists(self.schema_path):

@@ -1,6 +1,6 @@
 import logging
 import random
-from fs42.schedule_hint import hint_klass_matcher
+from shared.stations.schedule_hint import hint_klass_matcher
 
 class MarathonAgent:
     _l = logging.getLogger("MARATHONAGENT")

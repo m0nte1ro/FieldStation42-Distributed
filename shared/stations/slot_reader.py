@@ -3,7 +3,7 @@ import copy
 import random
 import math
 
-from fs42 import timings
+from shared import timings
 
 
 class SlotReader:

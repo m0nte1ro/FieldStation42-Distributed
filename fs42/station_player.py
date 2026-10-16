@@ -37,8 +37,8 @@ from fs42.reception import (
 from fs42.liquid_manager import LiquidManager, PlayPoint, ScheduleNotFound, ScheduleQueryNotInBounds
 
 from fs42.liquid_schedule import LiquidSchedule
-from fs42.station_manager import StationManager
-from fs42.slot_reader import SlotReader
+from shared.stations.manager import StationManager
+from shared.stations.slot_reader import SlotReader
 from fs42.box.config import is_box, load_box_config
 from fs42.box.media import media_location
 from fs42.box.sync import refresh_requested

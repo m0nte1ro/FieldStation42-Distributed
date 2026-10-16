@@ -9,12 +9,12 @@ from pathlib import Path
 from fs42.catalog_entry import CatalogEntry, MatchingContentNotFound, NoFillerContentFound
 from fs42.catalog_api import CatalogAPI
 from fs42.hint_agent import HintAgent
-from fs42.timings import MIN_5, DAYS
+from shared.timings import MIN_5, DAYS
 from fs42.liquid_blocks import ReelBlock
 from fs42.media_processor import MediaProcessor
 from fs42.sequence_api import SequenceAPI
 from fs42.autobump_agent import AutoBumpAgent
-from fs42.slot_reader import SlotReader
+from shared.stations.slot_reader import SlotReader
 
 
 

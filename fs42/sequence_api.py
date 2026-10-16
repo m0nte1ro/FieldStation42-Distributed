@@ -3,7 +3,7 @@ import logging
 import os
 import random
 import re
-from fs42.timings import DAYS
+from shared.timings import DAYS
 from fs42.sequence_io import SequenceIO
 from fs42.media_processor import MediaProcessor
 from fs42.catalog_api import CatalogAPI

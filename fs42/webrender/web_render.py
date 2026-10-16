@@ -198,7 +198,7 @@ def web_render_runner(user_conf, queue):
 
     # Navigate to URL after a short delay to ensure Qt is fully initialized
     def delayed_navigate():
-        from fs42.station_manager import StationManager
+        from shared.stations.manager import StationManager
         url = user_conf.get("web_url") or f"{StationManager().local_server_url()}/static/diagnostics.html"
         if "url" in user_conf:
             app.window.navigate(user_conf["url"])
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     import sys
     import os
     sys.path.append(os.getcwd())
-    from fs42.station_manager import StationManager
+    from shared.stations.manager import StationManager
 
     # Simple test config - customize as needed
     test_conf = {
@@ -227,7 +227,7 @@ if __name__ == "__main__":
 
     # Or load a station config by name
     # Uncomment and modify to use a station config:
-    # from fs42.station_manager import StationManager
+    # from shared.stations.manager import StationManager
     # test_conf = StationManager().station_by_name("diagnostic")
 
     web_render_runner(test_conf, None)

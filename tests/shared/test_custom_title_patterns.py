@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
-from fs42.station_manager import StationManager
-from fs42.station_io import StationIO
+from shared.stations.manager import StationManager
+from shared.stations.io import StationIO
 
 
 class TestCustomTitlePatternsLoading:
@@ -15,7 +15,7 @@ class TestCustomTitlePatternsLoading:
 
     def _make_manager(self, config_data):
         with patch.object(StationIO, 'load_main_config', return_value=config_data):
-            with patch('fs42.station_io.glob.glob', return_value=[]):
+            with patch('shared.stations.io.glob.glob', return_value=[]):
                 return StationManager()
 
     def test_load_valid_custom_patterns(self):

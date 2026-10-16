@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.catalog_api import CatalogAPI
 from fs42.liquid_manager import LiquidManager
 

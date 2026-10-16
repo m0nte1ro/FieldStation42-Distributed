@@ -9,8 +9,8 @@ import signal
 import logging
 
 from fs42.liquid_manager import LiquidManager
-from fs42.station_manager import StationManager, StationConfigError
-from fs42.timings import MIN_1, DAYS
+from shared.stations.manager import StationManager, StationConfigError
+from shared.timings import MIN_1, DAYS
 from fs42.station_player import (
     StationPlayer,
     PlayerState,

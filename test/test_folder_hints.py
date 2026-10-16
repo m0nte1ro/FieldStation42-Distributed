@@ -1,10 +1,10 @@
 from unittest.mock import patch
 from datetime import datetime
 
-from fs42 import schedule_hint
+from shared.stations import schedule_hint
 from fs42.media_processor import MediaProcessor
-from fs42.station_io import StationIO
-from fs42.station_manager import StationManager
+from shared.stations.io import StationIO
+from shared.stations.manager import StationManager
 
 
 class TestFolderHints:
@@ -18,7 +18,7 @@ class TestFolderHints:
             "custom_holidays": {"aug_day": "August 29", "thanksgiving": "4th thursday november"},
         }
         with patch.object(StationIO, "load_main_config", return_value=config_data):
-            with patch("fs42.station_io.glob.glob", return_value=[]):
+            with patch("shared.stations.io.glob.glob", return_value=[]):
                 StationManager()
 
     def _hints_for(self, folder, bumpdir=False):
@@ -71,7 +71,7 @@ class TestHintJSONRoundTrip:
         StationManager.stations = []
         config_data = {"server_port": 4242, "custom_holidays": {"aug_day": "August 29"}}
         with patch.object(StationIO, "load_main_config", return_value=config_data):
-            with patch("fs42.station_io.glob.glob", return_value=[]):
+            with patch("shared.stations.io.glob.glob", return_value=[]):
                 StationManager()
 
     def test_every_registered_type_round_trips(self):

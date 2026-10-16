@@ -4,10 +4,10 @@ import json
 import datetime
 
 sys.path.append(os.getcwd())
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.liquid_manager import LiquidManager, ScheduleNotFound, ScheduleQueryNotInBounds
 from fs42.liquid_blocks import LiquidBlock
-from fs42.title_parser import TitleParser
+from shared.title_parser import TitleParser
 from fs42.metadata_io import MetadataIO
 
 def normalize_video_title(title):

@@ -1,7 +1,7 @@
 import logging
 import os
-from fs42.slot_reader import SlotReader
-from fs42.station_io import StationIO
+from shared.stations.slot_reader import SlotReader
+from shared.stations.io import StationIO
 
 
 class StationConfigError(Exception):
@@ -71,7 +71,7 @@ class StationManager(object):
                 if station["network_type"] == "guide":
                     self.guide_config = station
                     logging.getLogger().info("Loading and checking guide channel")
-                    from fs42.guide_tk import GuideWindowConf
+                    from shared.stations.guide_conf import GuideWindowConf
 
                     gconf = GuideWindowConf()
                     errors = gconf.check_config(station)
@@ -125,7 +125,7 @@ class StationManager(object):
         # both fail quietly, so reject the name instead.
         # imported here rather than at module scope - schedule_hint imports
         # station_manager, so a top level import would be circular
-        from fs42 import schedule_hint
+        from shared.stations import schedule_hint
 
         others = [
             klass for klass in schedule_hint.FOLDER_HINT_KLASSES

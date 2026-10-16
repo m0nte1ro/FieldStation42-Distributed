@@ -34,7 +34,7 @@ except ImportError:
     sys.exit(1)
 
 from fs42.fluid_objects import FileRepoEntry
-from fs42 import timings
+from shared import timings
 
 try:
     try:
@@ -51,7 +51,7 @@ try:
 except ImportError:
     mutagen = None
 
-from fs42 import schedule_hint
+from shared.stations import schedule_hint
 from fs42.catalog_entry import CatalogEntry
 
 

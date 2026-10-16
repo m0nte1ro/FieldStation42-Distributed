@@ -3,7 +3,7 @@ import datetime
 from fs42.catalog_entry import CatalogEntry
 from pathlib import Path
 
-from fs42 import schedule_hint
+from shared.stations import schedule_hint
 
 
 class HintAgent(object):

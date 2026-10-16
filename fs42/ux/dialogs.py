@@ -3,7 +3,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, Button, Select, LoadingIndicator
 from textual.containers import Grid, Vertical
 
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 
 class LoadingScreen(ModalScreen):

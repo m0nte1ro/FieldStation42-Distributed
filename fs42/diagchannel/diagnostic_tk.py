@@ -2,7 +2,7 @@ import tkinter as tk  # import Tkinter
 import sys
 import os
 sys.path.append(os.getcwd())
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 
 class DiagWindowConf:

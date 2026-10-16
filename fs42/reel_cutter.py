@@ -1,4 +1,4 @@
-from fs42.block_plan import BlockPlanEntry
+from shared.rundown import BlockPlanEntry
 from fs42.media_processor import MediaProcessor
 
 class ReelCutter:

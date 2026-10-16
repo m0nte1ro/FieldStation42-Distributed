@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fs42.box.rundown import build_rundown
 from fs42.liquid_manager import LiquidManager
 from fs42.media_processor import MediaProcessor
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 router = APIRouter(prefix="/box", tags=["box"])
 

@@ -1,8 +1,8 @@
 import datetime
 
-from fs42.config_processor import ConfigProcessor
+from shared.stations.config_processor import ConfigProcessor
 from fs42.marathon_agent import MarathonAgent
-from fs42.slot_reader import SlotReader
+from shared.stations.slot_reader import SlotReader
 
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 MONDAY_8PM = datetime.datetime(2026, 10, 12, 20, 0)

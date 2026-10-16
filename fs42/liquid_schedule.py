@@ -8,15 +8,15 @@ import datetime
 import math
 
 from fs42.catalog import ShowCatalog, MatchingContentNotFound
-from fs42.slot_reader import SlotReader
-from fs42 import timings
+from shared.stations.slot_reader import SlotReader
+from shared import timings
 from fs42.liquid_blocks import LiquidBlock, LiquidClipBlock, LiquidOffAirBlock, LiquidLoopBlock, LiquidWebBlock
 from fs42.sequence_api import SequenceAPI
 from fs42.catalog_api import CatalogAPI
 from fs42.liquid_api import LiquidAPI
 from fs42.marathon_agent import MarathonAgent
 from fs42.path_query import PathQuery
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.liquid_io import LiquidIO
 from fs42.autobump_agent import AutoBumpAgent
 from fs42.schedule_lock import schedule_write_lock

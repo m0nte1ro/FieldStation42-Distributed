@@ -2,7 +2,7 @@ import threading
 import traceback
 import uuid
 from fastapi import APIRouter, Request
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.catalog_api import CatalogAPI
 from fs42.liquid_manager import LiquidManager
 from fs42.liquid_schedule import LiquidSchedule

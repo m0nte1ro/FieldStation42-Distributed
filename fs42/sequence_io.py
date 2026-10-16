@@ -1,7 +1,7 @@
 import sqlite3
 from contextlib import contextmanager
 
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.sequence import NamedSequence
 
 

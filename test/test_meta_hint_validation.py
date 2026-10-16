@@ -3,7 +3,7 @@ import logging
 import pytest
 
 from fs42.marathon_agent import MarathonAgent
-from fs42.station_io import StationIO
+from shared.stations.io import StationIO
 from datetime import datetime
 
 

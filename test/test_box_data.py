@@ -10,14 +10,14 @@ sys.modules.setdefault("ffmpeg", MagicMock())
 sys.modules.setdefault("moviepy", MagicMock())
 sys.modules.setdefault("moviepy.editor", MagicMock())
 
-from fs42.block_plan import BlockPlanEntry  # noqa: E402
+from shared.rundown import BlockPlanEntry  # noqa: E402
 from fs42.box.media import media_location  # noqa: E402
 from fs42.box.rundown import block_to_json  # noqa: E402
 from fs42.catalog_entry import CatalogEntry  # noqa: E402
 from fs42.liquid_blocks import LiquidBlock  # noqa: E402
 from fs42.liquid_manager import LiquidManager  # noqa: E402
 from fs42.metadata_io import MetadataIO  # noqa: E402
-from fs42.station_manager import StationManager  # noqa: E402
+from shared.stations.manager import StationManager  # noqa: E402
 
 HTTP = {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {}}
 START = datetime.datetime(2026, 10, 16, 20, 0)

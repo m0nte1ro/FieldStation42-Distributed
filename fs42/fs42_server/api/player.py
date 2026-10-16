@@ -4,7 +4,7 @@ import subprocess
 import shutil
 import re
 import platform
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 router = APIRouter(prefix="/player", tags=["player"])
 

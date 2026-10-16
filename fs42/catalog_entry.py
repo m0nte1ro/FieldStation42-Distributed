@@ -1,7 +1,7 @@
 import os
 import json
 
-from fs42 import schedule_hint
+from shared.stations import schedule_hint
 
 
 class MatchingContentNotFound(Exception):

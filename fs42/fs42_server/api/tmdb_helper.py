@@ -6,7 +6,7 @@ import logging
 import json
 from typing import Optional, Dict, Any
 from pathlib import Path
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 logger = logging.getLogger("TMDB_Helper")
 

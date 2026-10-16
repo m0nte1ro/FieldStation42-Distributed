@@ -19,7 +19,7 @@ from fs42.fluid_statements import FluidStatements  # noqa: E402
 from fs42.fs42_server.api import box as box_api  # noqa: E402
 from fs42.fs42_server.api.box import router  # noqa: E402
 from fs42.liquid_io import LiquidIO  # noqa: E402
-from fs42.station_manager import StationManager  # noqa: E402
+from shared.stations.manager import StationManager  # noqa: E402
 
 DB = "runtime/fs42.db"
 SHOW = "catalog/toons/a b#1.mp4"

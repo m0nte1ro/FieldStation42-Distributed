@@ -9,7 +9,7 @@ from fs42.catalog import ShowCatalog
 from fs42.catalog_entry import CatalogEntry, MatchingContentNotFound, NoFillerContentFound
 from fs42.liquid_blocks import LiquidBlock
 from fs42.liquid_schedule import LiquidSchedule
-from fs42.timings import DAYS
+from shared.timings import DAYS
 
 
 def test_probability_is_resolved_per_bump():
@@ -146,7 +146,7 @@ def test_chosen_pool_keeps_filtering_lookahead_and_missing_content_errors():
 
 
 def test_station_schema_declares_object_form_for_slot_bump_dir():
-    schema = json.loads((Path(__file__).parents[1] / "fs42/station_config_schema.json").read_text())
+    schema = json.loads((Path(__file__).parents[1] / "shared/stations/schema.json").read_text())
     station = schema["properties"]["station_conf"]["properties"]
     slot_ref = {"$ref": "#/$defs/timeSlotConfig"}
     # Every slot-level location routes through timeSlotConfig.

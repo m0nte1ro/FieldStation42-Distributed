@@ -1,7 +1,7 @@
 import copy
 from datetime import datetime
 
-from fs42 import timings
+from shared import timings
 
 
 class ConfigurationError(Exception):

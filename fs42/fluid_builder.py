@@ -7,7 +7,7 @@ sys.path.append(os.getcwd())
 
 from fs42.fluid_statements import FluidStatements
 from fs42.media_processor import MediaProcessor
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 
 class FluidBuilder:
     def __init__(self, db_path=None):

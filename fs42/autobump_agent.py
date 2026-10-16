@@ -15,7 +15,7 @@ class AutoBumpAgent:
 
     @staticmethod
     def static_url(path):
-        from fs42.station_manager import StationManager
+        from shared.stations.manager import StationManager
         return f"{StationManager().local_server_url()}/static/{path}"
 
     @staticmethod

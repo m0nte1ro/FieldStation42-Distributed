@@ -4,11 +4,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from fs42.catalog_entry import CatalogEntry
 from fs42.autobump_agent import AutoBumpAgent
-from fs42.station_manager import StationManager
+from shared.stations.manager import StationManager
 from fs42.liquid_blocks import LiquidBlock, LiquidLoopBlock, LiquidClipBlock, LiquidOffAirBlock, LiquidWebBlock
-from fs42.block_plan import BlockPlanEntry
+from shared.rundown import BlockPlanEntry
 from fs42.catalog_api import CatalogAPI
-from fs42.title_parser import TitleParser
+from shared.title_parser import TitleParser
 
 
 class LiquidIO:

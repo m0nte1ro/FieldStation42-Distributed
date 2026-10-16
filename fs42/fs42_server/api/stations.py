@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from fs42.station_manager import StationManager
-from fs42.station_io import StationIO
+from shared.stations.manager import StationManager
+from shared.stations.io import StationIO
 from fs42.liquid_manager import LiquidManager
 
 router = APIRouter(prefix="/stations", tags=["stations"])

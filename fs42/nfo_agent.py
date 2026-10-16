@@ -239,7 +239,7 @@ class NFOAgent:
     def _load_overlay_config():
         cfg = dict(_OVERLAY_DEFAULTS)
         try:
-            from fs42.station_manager import StationManager
+            from shared.stations.manager import StationManager
             main_conf = StationManager().server_conf
             overlay_conf = main_conf.get("overlay_conf", {})
             for key in _OVERLAY_DEFAULTS:
