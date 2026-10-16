@@ -36,8 +36,12 @@ Channel configuration is FieldStation42's: see [fieldstation42.com](https://fiel
 The server runs the web console on port 4242, keeps every channel scheduled ahead on its own (default: when less than a day is left, add a week; override with `schedule_agent` in `confs/main_config.json`), and serves boxes their config, rundowns and media.
 
 ```bash
+mkdir -p confs catalog runtime
+cp -n docs/static.mp4 docs/standby.png docs/brb.png docs/off_air_pattern.mp4 docs/signoff.mp4 runtime/
 docker compose -f docker/server/compose.yml up -d --build
 ```
+
+The `cp` puts upstream's default standby, static, sign-off and off-air media in `runtime/` (the installer does this on a full install); station configs that point at them are skipped without them.
 
 `confs/`, `catalog/` and `runtime/` are mounted from the repo directory. Mount your media at the **same path** your catalog uses (the paths your `catalog/` symlinks point to), and set `TZ` to your time zone. Then configure channels, build catalogs and schedules from the console at `http://<server>:4242` as in FieldStation42.
 
@@ -69,7 +73,7 @@ The box keeps its settings in `box.json` in the FieldStation42 directory:
 - `media.method` is `http` (default: media streams from the server, MPV seeks straight to the right point) or `mount` with a `root`, e.g. `{"method": "mount", "root": "/mnt/fs42"}` for an SMB/NFS mount of the server's FieldStation42 directory. The share must resolve the library symlinks on the server side: Samba can, NFS can't.
 - `main_config` holds this box's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the box's own.
 
-Each box serves its own web remote at `http://<box>:4242/remote`.
+Each box answers its web remote at `http://<box>:4242/remote`; the page itself comes from the server, so it needs the server up.
 
 ### Access
 

@@ -82,6 +82,7 @@ def client(tmp_path, monkeypatch):
     # the preset StationManager can't load from disk; tests that care replace this
     monkeypatch.setattr(StationManager, "_reload_stations", lambda self: None, raising=False)
     monkeypatch.setattr(box_api, "_conf_signature", None)
+    monkeypatch.setattr(box_api, "LiquidManager", lambda: type("L", (), {"reload_schedules": lambda self: None})())
     app = FastAPI()
     app.include_router(router)
     yield TestClient(app)
@@ -190,3 +191,29 @@ def test_stations_reload_when_conf_files_change_on_disk(client, monkeypatch):
         json.dump({"station_conf": {"network_name": "News"}}, f)
     client.get("/box/rundown")
     assert len(reloads) == 2
+
+
+def test_media_in_the_catalog_is_allowed_outside_content_dir(client, tmp_path):
+    shared = tmp_path / "shared" / "ad 1.mp4"
+    _touch(str(shared), b"ad")
+    with sqlite3.connect(DB) as conn:
+        conn.execute("INSERT INTO catalog_entries (station, path, title, duration, tag, count, hints)"
+                     " VALUES ('Toons', ?, 'ad', 15, '/shared', 0, '[]')", (str(shared),))
+    assert client.get("/box/media", params={"path": str(shared)}).status_code == 200
+    assert client.get("/box/media", params={"path": str(tmp_path / "shared" / "other.mp4")}).status_code == 403
+
+
+def test_media_requests_skip_manifest_and_version_work(client, monkeypatch):
+    def boom(*args, **kwargs):
+        raise AssertionError("tune path built the manifest")
+
+    monkeypatch.setattr(box_api, "file_manifest", boom)
+    monkeypatch.setattr(box_api, "compute_version", boom)
+    assert client.get("/box/media", params={"path": SHOW}).status_code == 200
+
+
+def test_conf_change_also_reloads_the_schedule_cache(client, monkeypatch):
+    reloads = []
+    monkeypatch.setattr(box_api, "LiquidManager", lambda: type("L", (), {"reload_schedules": lambda self: reloads.append(1)})())
+    client.get("/box/version")
+    assert reloads == [1]

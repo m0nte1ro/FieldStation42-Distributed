@@ -106,6 +106,17 @@ def input_check():
 
 
 
+def current_station(manager, channel_conf):
+    # a box reloads stations when the server's configs change; find the tuned station again
+    # (by name, then by channel number) so a moved, renamed or removed station can't crash the loop
+    stations = manager.stations
+    for key in ("network_name", "channel_number"):
+        for index, station in enumerate(stations):
+            if station[key] == channel_conf[key]:
+                return index, station
+    return 0, stations[0]
+
+
 def main_loop(transition_fn, shutdown_queue=None, api_proc=None, schedule_lock=None):
     manager = StationManager()
     reception = ReceptionStatus()
@@ -194,6 +205,10 @@ def main_loop(transition_fn, shutdown_queue=None, api_proc=None, schedule_lock=N
     while True:
         if schedule_agent:
             schedule_agent.tick()
+
+        if manager.stations and not skip_play:
+            channel_index, channel_conf = current_station(manager, channel_conf)
+            player.station_config = channel_conf
 
         logger.info(f"Playing station: {channel_conf['network_name']}")
 

@@ -533,7 +533,10 @@ class StationPlayer:
                 self.mpv.vf = self.reception.filter()
 
     def _media_target(self, file_path):
-        return media_location(file_path, self.box_config) if self.box_config else file_path
+        # files the box has (standby, static, synced guide audio) play locally, so they work with the server down
+        if not self.box_config or os.path.exists(file_path):
+            return file_path
+        return media_location(file_path, self.box_config)
 
     def play_file(self, file_path, file_duration=None, offset_seconds=None, is_stream=False, title="Unknown", content_type=None, media_type=None):
         try:
@@ -619,7 +622,12 @@ class StationPlayer:
                         if time.time() - start_time > timeout_seconds:
                             self._l.error(f"Timeout waiting for playback to start on {file_path}")
                             return False
-                        if is_stream:
+                        from_server = "://" in target and not is_stream
+                        # mpv goes back to idle when a server open fails; don't sit out the whole timeout
+                        if from_server and time.time() - start_time > 0.5 and getattr(self.mpv, "idle_active", False):
+                            self._l.error(f"Could not open {target}")
+                            return False
+                        if is_stream or from_server:
                             response = self.input_check_fn()
                             if (
                                 response

@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from fs42.box.rundown import build_rundown
+from fs42.liquid_manager import LiquidManager
 from fs42.media_processor import MediaProcessor
 from fs42.station_manager import StationManager
 
@@ -71,8 +72,21 @@ def _is_under(path, root):
     return path == root or path.startswith(root + os.sep)
 
 
-def media_allowed(path, stations):
-    if not path or "\x00" in path or ".." in Path(path).parts:
+def _in_catalog(path, db_path):
+    try:
+        with sqlite3.connect(db_path) as conn:
+            return conn.execute("SELECT 1 FROM catalog_entries WHERE path = ? LIMIT 1", (path,)).fetchone() is not None
+    except sqlite3.Error:
+        return False
+
+
+def media_allowed(path, stations, db_path=None):
+    if not path or "\x00" in path:
+        return False
+    # anything the catalog scanned is playable - upstream allows absolute and ../ tag, bump and commercial dirs
+    if db_path and _in_catalog(path, db_path):
+        return True
+    if ".." in Path(path).parts:
         return False
     norm = os.path.normpath(path)
     extension = os.path.splitext(norm)[1].lower().lstrip(".")
@@ -91,15 +105,32 @@ def media_allowed(path, stations):
 _conf_signature = None
 
 
-def _state():
+def _conf_files_signature():
+    signature = []
+    for path in sorted(glob.glob("confs/*.json")):
+        try:
+            stat = os.stat(path)
+        except OSError:
+            continue
+        signature.append((path, stat.st_size, stat.st_mtime))
+    return signature
+
+
+def _stations():
     global _conf_signature
     manager = StationManager()
     # station configs edited on disk only load on restart upstream; boxes would get the new
-    # files but no schedule for them, so reload whenever the confs change
-    signature = sorted((p, os.stat(p).st_size, os.stat(p).st_mtime) for p in glob.glob("confs/*.json"))
+    # files but no schedule for them, and the schedule keeper would never extend them
+    signature = _conf_files_signature()
     if signature != _conf_signature:
         manager._reload_stations()
+        LiquidManager().reload_schedules()
         _conf_signature = signature
+    return manager
+
+
+def _state():
+    manager = _stations()
     manifest = file_manifest(manager.stations)
     return manager, manifest, compute_version(manager.server_conf["db_path"], manifest)
 
@@ -134,8 +165,8 @@ def get_file(path: str):
 
 @router.get("/media")
 def get_media(path: str):
-    manager, _, _ = _state()
-    if not media_allowed(path, manager.stations):
+    manager = _stations()
+    if not media_allowed(path, manager.stations, manager.server_conf["db_path"]):
         raise HTTPException(status_code=403, detail="not a media path")
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="media not found")

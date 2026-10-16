@@ -177,3 +177,17 @@ def test_initial_sync_without_cache_retries_until_server_answers(server, tmp_pat
 def test_paths_are_constants_relative_to_root():
     assert sync.MANIFEST_STATE == "runtime/box_manifest.json"
     assert sync.SERVER_MAIN_CONFIG == "runtime/main_config.server.json"
+
+
+def test_poll_survives_an_unexpected_server_reply(server, tmp_path):
+    box = _box(server, tmp_path)
+    box.initial_sync(retry_seconds=0)
+    original = server.handle
+
+    def odd(request):
+        if request.url.path == "/box/version":
+            return httpx.Response(200, json={"version": "v9"})  # no server_time
+        return original(request)
+
+    box.client = httpx.Client(base_url=SERVER, transport=httpx.MockTransport(odd))
+    assert box.poll_once() is False

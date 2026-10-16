@@ -1,4 +1,5 @@
 import json
+import time
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -26,6 +27,7 @@ class FakeMPV:
         self.time_pos = None
         self.duration = 600.0
         self.stuck_at_zero = False
+        self.idle_active = False
 
     def command(self, *args):
         self.commands.append(args)
@@ -122,3 +124,64 @@ def test_input_check_reloads_when_sync_requests_it(tmp_path):
     stations.return_value._reload_stations.assert_called_once()
     liquid.return_value.reload_schedules.assert_called_once()
     assert not reload_requested.is_set()
+
+
+def test_box_plays_files_it_has_locally_without_the_server(player, tmp_path):
+    (tmp_path / "box.json").write_text(json.dumps({"server_url": "http://homelab:4242"}))
+    (tmp_path / "runtime").mkdir()
+    (tmp_path / "runtime/standby.png").write_bytes(b"png")
+    p = player()
+    p.play_file("runtime/standby.png")
+    assert p.mpv.played == ["runtime/standby.png"]
+
+
+def test_failed_server_open_gives_up_fast(player, tmp_path):
+    (tmp_path / "box.json").write_text(json.dumps({"server_url": "http://homelab:4242"}))
+    p = player()
+    p.mpv.play = lambda path: p.mpv.played.append(path)  # never starts: time_pos stays None
+    p.mpv.idle_active = True
+    started = time.time()
+    assert p.play_file("catalog/gone.mp4", file_duration=600, offset_seconds=0) is False
+    assert time.time() - started < 0.9 * 1  # well under video_seek_timeout
+
+
+def test_channel_change_during_a_server_open_is_not_lost(player, tmp_path):
+    (tmp_path / "box.json").write_text(json.dumps({"server_url": "http://homelab:4242"}))
+    p = player()
+    p.mpv.play = lambda path: p.mpv.played.append(path)
+    p.mpv.idle_active = False  # still loading
+    change = station_player.PlayerOutcome(station_player.PlayerState.CHANNEL_CHANGE)
+    p.input_check_fn = lambda: change
+    assert p.play_file("catalog/slow.mp4", file_duration=600, offset_seconds=0) is False
+    assert p._pending_response is change
+
+
+def _stations(*confs):
+    manager = MagicMock()
+    manager.stations = list(confs)
+    return manager
+
+
+def test_current_station_follows_a_station_that_moved_in_the_list():
+    import field_player
+
+    toons = {"network_name": "Toons", "channel_number": 3, "hidden": False}
+    news = {"network_name": "News", "channel_number": 2, "hidden": False}
+    fresh_toons = dict(toons, logo_dir="new")
+    assert field_player.current_station(_stations(news, fresh_toons), toons) == (1, fresh_toons)
+
+
+def test_current_station_falls_back_when_the_station_was_removed():
+    import field_player
+
+    news = {"network_name": "News", "channel_number": 2, "hidden": False}
+    gone = {"network_name": "Toons", "channel_number": 3, "hidden": False}
+    assert field_player.current_station(_stations(news), gone) == (0, news)
+
+
+def test_current_station_finds_a_renamed_station_by_channel_number():
+    import field_player
+
+    renamed = {"network_name": "Cartoons", "channel_number": 3, "hidden": False}
+    old = {"network_name": "Toons", "channel_number": 3, "hidden": False}
+    assert field_player.current_station(_stations(renamed), old) == (0, renamed)

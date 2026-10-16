@@ -126,6 +126,10 @@ class BoxSync:
         except _SYNC_ERRORS as e:
             self._l.warning(f"Could not reach the server: {e}")
             return False
+        except Exception as e:
+            # the poller must outlive anything the server sends back, or the box stops updating for good
+            self._l.exception(f"Unexpected sync failure: {e}")
+            return False
         reload_requested.set()
         return True
 
