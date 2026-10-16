@@ -1,6 +1,7 @@
 import datetime
 import logging
 
+from fs42.box.config import is_box
 from fs42.station_manager import StationManager
 from fs42.liquid_blocks import LiquidBlock, BlockPlanEntry
 from fs42.catalog import ShowCatalog
@@ -43,10 +44,18 @@ class LiquidManager(object):
     def reload_schedules(self):
         self.station_configs = StationManager().stations
         self.schedules = {}
+        rundown = None
+        if is_box():
+            from fs42.box.rundown import load_rundown
+
+            rundown = load_rundown()
         for station in self.station_configs:
             if station["network_type"] != "guide" and station["network_type"] != "streaming":
                 _id = station["network_name"]
-                self.schedules[_id] = LiquidAPI.get_blocks(station)
+                if rundown is not None:
+                    self.schedules[_id] = rundown.get(_id, [])
+                else:
+                    self.schedules[_id] = LiquidAPI.get_blocks(station)
 
     def get_schedule_by_name(self, network_name):
         if network_name in self.schedules:

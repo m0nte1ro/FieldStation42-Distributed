@@ -7,6 +7,7 @@ import shutil
 import datetime
 from pathlib import Path
 
+from fs42.box.config import is_box
 from fs42.config_processor import ConfigProcessor
 from fs42 import schedule_hint
 from fs42 import timings
@@ -229,8 +230,8 @@ class StationIO:
             if key not in station_conf:
                 station_conf[key] = StationIO.OVERWATCH_DEFAULTS[key]
 
-        # Check that referenced files exist
-        for to_check in StationIO.FILE_CHECKS:
+        # Check that referenced files exist - a box streams media from the server, so it has none of them
+        for to_check in [] if is_box() else StationIO.FILE_CHECKS:
             if to_check in station_conf:
                 if not os.path.exists(station_conf[to_check]):
                     self._l.error("*" * 60)

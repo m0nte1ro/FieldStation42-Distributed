@@ -3,6 +3,8 @@ import json
 import sqlite3
 import logging
 
+from fs42.box.config import is_box
+
 _logger = logging.getLogger("MetadataIO")
 
 
@@ -42,6 +44,11 @@ class MetadataIO:
     def read_many(file_paths, db_path=None):
         if not file_paths:
             return {}
+
+        if is_box():
+            from fs42.box.rundown import box_meta
+
+            return {path: meta for path in file_paths if (meta := box_meta(path))}
 
         if db_path is None:
             try:
@@ -85,6 +92,10 @@ class MetadataIO:
 
     @staticmethod
     def read(file_path, db_path=None):
+        if is_box():
+            from fs42.box.rundown import box_meta
+
+            return box_meta(file_path)
         if db_path is None:
             try:
                 db_path = MetadataIO._default_db_path()
