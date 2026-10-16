@@ -1,0 +1,20 @@
+# FieldStation42 server: catalog, schedules, console and the /box API for player boxes.
+# Run from the repo root: docker compose -f docker/server/compose.yml up -d
+services:
+  fs42-server:
+    build:
+      context: ../..
+      dockerfile: docker/server/Dockerfile
+    container_name: fs42-server
+    ports:
+      - "4242:4242"
+    environment:
+      - TZ=Europe/Lisbon
+    volumes:
+      - ../../confs:/app/confs
+      - ../../catalog:/app/catalog
+      - ../../runtime:/app/runtime
+      - /etc/localtime:/etc/localtime:ro
+      # mount the media at the same path the catalog uses (follow your catalog symlinks), e.g.
+      # - /mnt/media:/mnt/media:ro
+    restart: unless-stopped

@@ -39,6 +39,9 @@ from fs42.liquid_manager import LiquidManager, PlayPoint, ScheduleNotFound, Sche
 from fs42.liquid_schedule import LiquidSchedule
 from fs42.station_manager import StationManager
 from fs42.slot_reader import SlotReader
+from fs42.box.config import is_box, load_box_config
+from fs42.box.media import media_location
+from fs42.box.sync import refresh_requested
 
 logging.basicConfig(format="%(asctime)s %(levelname)s:%(name)s:%(message)s", level=logging.INFO)
 
@@ -195,7 +198,11 @@ class StationPlayer:
                 hr_seek="yes",
                 image_display_duration="inf",
             )
+        else:
+            self.mpv = mpv
 
+        # a box plays the server's paths over HTTP (or from its mount); everything else is unchanged
+        self.box_config = load_box_config() if is_box() else None
         self.station_config = station_config
         # self.playlist = self.read_json(runtime_filepath)
         self.input_check_fn = input_check_fn
@@ -525,9 +532,16 @@ class StationPlayer:
             else:
                 self.mpv.vf = self.reception.filter()
 
+    def _media_target(self, file_path):
+        # files the box has (standby, static, synced guide audio) play locally, so they work with the server down
+        if not self.box_config or os.path.exists(file_path):
+            return file_path
+        return media_location(file_path, self.box_config)
+
     def play_file(self, file_path, file_duration=None, offset_seconds=None, is_stream=False, title="Unknown", content_type=None, media_type=None):
         try:
-            if os.path.exists(file_path) or is_stream or AutoBumpAgent.is_autobump_url(file_path):
+            target = self._media_target(file_path)
+            if os.path.exists(target) or is_stream or AutoBumpAgent.is_autobump_url(file_path) or "://" in target:
                 self._l.debug(f"%%%Attempting to play {file_path}")
                 self.current_playing_file_path = file_path
 
@@ -590,9 +604,12 @@ class StationPlayer:
                 self._apply_vfx(datetime.datetime.now())
 
                 # self.mpv.vf = "lavfi=[]"
-                self._l.info(f"playing {file_path}")
+                self._l.info(f"playing {target}")
+                # open once at the offset instead of play-then-seek, so a tune costs one open
+                seek_to = offset_seconds if not is_stream and offset_seconds is not None and offset_seconds > 0 else None
+                self.mpv.command("set", "start", str(seek_to) if seek_to else "none")
                 self.mpv.command("playlist-clear")
-                self.mpv.play(file_path)
+                self.mpv.play(target)
                 
 
                 timeout_seconds = StationManager().server_conf.get("video_seek_timeout", 10)
@@ -605,7 +622,12 @@ class StationPlayer:
                         if time.time() - start_time > timeout_seconds:
                             self._l.error(f"Timeout waiting for playback to start on {file_path}")
                             return False
-                        if is_stream:
+                        from_server = "://" in target and not is_stream
+                        # mpv goes back to idle when a server open fails; don't sit out the whole timeout
+                        if from_server and time.time() - start_time > 0.5 and getattr(self.mpv, "idle_active", False):
+                            self._l.error(f"Could not open {target}")
+                            return False
+                        if is_stream or from_server:
                             response = self.input_check_fn()
                             if (
                                 response
@@ -621,9 +643,12 @@ class StationPlayer:
                             return False
                         time.sleep(0.05)
 
-                # Perform seek if needed (before showing overlay)
-                if not is_stream and offset_seconds is not None and offset_seconds > 0:
-                    self._seek_with_verify(file_path, offset_seconds, timeout_seconds)
+                # fall back to the old seek if the open didn't land on the offset
+                if seek_to:
+                    landed = self.mpv.time_pos
+                    if landed is None or abs(landed - seek_to) > 1.0:
+                        self._l.warning(f"Open landed at {landed}, not {seek_to} - seeking")
+                        self._seek_with_verify(target, seek_to, timeout_seconds)
 
                 # Show Now Playing overlay for audio feature files
                 self._l.info(f"Media type: {media_type}, Content type: {content_type}")
@@ -704,8 +729,9 @@ class StationPlayer:
         self._close_now_playing()
         self.mpv.vf = ""
         self.mpv.af = ""
+        self.mpv.command("set", "start", "none")
         self.mpv.command("playlist-clear")
-        self.mpv.command("loadfile", file_path, "replace")
+        self.mpv.command("loadfile", self._media_target(file_path), "replace")
         self.mpv.loop_playlist = "inf"
         self.current_playing_file_path = file_path
 
@@ -748,6 +774,7 @@ class StationPlayer:
             # Clear any existing playlist and load the files
             self.current_playing_file_path = "playlist"
 
+            self.mpv.command("set", "start", "none")
             self.mpv.command("playlist-clear")
 
             # Load files using loadfile with 'append' flag
@@ -1001,6 +1028,11 @@ class StationPlayer:
         return PlayerOutcome(PlayerState.SUCCESS)
 
     def schedule_panic(self, network_name):
+        if self.box_config:
+            # boxes never build schedules; ask the sync for a fresh rundown and retry
+            self._l.warning(f"Rundown doesn't cover now for {network_name} - asking the server for a fresh one")
+            refresh_requested.set()
+            return
         self._l.critical("*********************Schedule Panic*********************")
         self._l.critical(f"Schedule not found for {network_name} - attempting to generate a one-day extention")
         if self.schedule_lock:

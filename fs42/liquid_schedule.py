@@ -19,6 +19,7 @@ from fs42.path_query import PathQuery
 from fs42.station_manager import StationManager
 from fs42.liquid_io import LiquidIO
 from fs42.autobump_agent import AutoBumpAgent
+from fs42.schedule_lock import schedule_write_lock
 
 # logging.basicConfig(format="%(asctime)s %(levelname)s:%(name)s:%(message)s", level=logging.INFO)
 
@@ -544,18 +545,24 @@ class LiquidSchedule:
                 # just return for now
                 return
 
+    def _locked_increments(self, amounts):
+        with schedule_write_lock():
+            # another writer may have extended the schedule since this object loaded it
+            self._load_blocks()
+            for amount in amounts:
+                self._increment(amount)
+
     def add_days(self, day_count):
-        for i in range(day_count):
-            self._increment("day")
+        self._locked_increments(["day"] * day_count)
 
     def add_week(self):
-        self._increment("week")
+        self._locked_increments(["week"])
 
     def add_month(self):
-        self._increment("month")
+        self._locked_increments(["month"])
 
     def add_amount(self, amount):
-        self._increment(amount)
+        self._locked_increments([amount])
 
     def print_schedule(self):
         for block in self._blocks:

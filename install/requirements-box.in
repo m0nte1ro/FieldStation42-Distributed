@@ -1,0 +1,13 @@
+# a player box plays channels from a server: mpv control, the overlays and web renderer,
+# the local API and its proxy, and the remote and serial inputs - nothing for building catalogs
+python-mpv-jsonipc
+ffmpeg-python
+pillow
+PySide6>=6.8
+fastapi>=0.120
+starlette>=0.49.1
+uvicorn
+httpx
+requests
+pyserial
+evdev
