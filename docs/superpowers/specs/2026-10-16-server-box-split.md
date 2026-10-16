@@ -46,7 +46,9 @@ and correct their clock with the `server_time` the server sends; the play point 
 `datetime.now() + offset`, so two boxes on one channel show the same thing.
 
 **Power-on.** The box downloads the config, the small files and a rundown of every channel,
-then starts playing (last channel, as upstream). Boot speed is not a goal; the box stays on.
+then starts playing (last channel, as upstream). A box that has synced before starts from its
+last copy right away and syncs in the background; only a box that has never synced waits for
+the server. Boot speed is not a goal; the box stays on.
 
 **Background updates.** Every 10 s the box asks `GET /box/version`. When the version changes it
 re-downloads what changed. New rundowns take effect at the next block boundary, exactly as
@@ -115,7 +117,7 @@ is written to disk. Volume stays the box's own mixer, as upstream.
 
 | Change | Where |
 |---|---|
-| Box bootstrap: read `box.json`; download `/box/files` into the FS42 root (owning `confs/*.json`: stale station files are removed) and the rundown into `runtime/rundown.json`; retry every 5 s with the standby image on screen until the first sync succeeds | new `fs42/box/sync.py`, called from `field_player.py` before `StationManager()` |
+| Box bootstrap: read `box.json`; download `/box/files` into the FS42 root (owning `confs/*.json`: stale station files are removed; manifest paths that are absolute or contain `..` are skipped, so logos and standby images must live under the FS42 root) and the rundown into `runtime/rundown.json`; a box with a previous sync starts from it, a box that never synced retries every 5 s until the first sync succeeds | new `fs42/box/sync.py`, called from `field_player.py` before `StationManager()` |
 | Background poller thread: `/box/version` every 10 s, rundown every hour; on change re-sync and queue `reload_data` (upstream's own reload path) | `fs42/box/sync.py`, started in `field_player.py` |
 | No schedule building on a box: no live schedule agent; `schedule_panic` becomes "refresh rundown, return FAILED" (upstream already shows standby and retries on FAILED) | `field_player.py`, `station_player.py` |
 | Station loading skips the media-exists checks (`content_dir`, `sign_off_video`, `off_air_video`, `standby_image`, `be_right_back_media`), which would otherwise drop every station | `station_io.py` |
@@ -133,7 +135,8 @@ cable box, Pico bridge, systemd units and their names. They keep reading the sam
 
 ## Failure behaviour
 
-- **Server down at power-on:** standby image, retry every 5 s; plays once the first sync works.
+- **Server down at power-on:** a box that synced before starts from its last copy; a box that
+  never synced retries every 5 s and starts once the first sync works.
 - **Server down later:** the box keeps its last rundown and keeps tuning; media already
   buffered keeps playing; a failed open is upstream's FAILED path (standby, retry each second).
   When the server is back, everything resumes on its own.
