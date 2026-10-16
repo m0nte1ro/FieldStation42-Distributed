@@ -310,7 +310,7 @@ def test_box_mode_metadata_comes_from_rundown(tmp_path, monkeypatch):   # Metada
 ### Task 7: Player in box mode and single-open tuning
 
 **Files:**
-- Modify: `fs42/station_player.py` (`__init__`, `play_file`, `play_and_wait`, `schedule_panic`; delete `_seek_with_verify`), `field_player.py` (`input_check`, `main_loop`, `__main__`)
+- Modify: `fs42/station_player.py` (`__init__`, `play_file`, `play_and_wait`, `schedule_panic`; keep `_seek_with_verify` as the fallback), `field_player.py` (`input_check`, `main_loop`, `__main__`)
 - Test: `test/test_box_player.py`
 
 **Interfaces:**
@@ -323,7 +323,8 @@ def test_box_mode_metadata_comes_from_rundown(tmp_path, monkeypatch):   # Metada
     - Plays `target = media_location(file_path, self.box_config)` when on a box, else `file_path`.
     - The existence check accepts `os.path.exists(target) or is_stream or autobump or "://" in target`.
     - The status socket and overlays keep the original `file_path`.
-    - Before loading it sends `mpv.command("set", "start", str(offset_seconds))` for a non-stream with `offset_seconds > 0`, else `mpv.command("set", "start", "none")`. It then loads once, as now, and no longer seeks afterwards.
+    - Before loading it sends `mpv.command("set", "start", str(offset_seconds))` for a non-stream with `offset_seconds > 0`, else `mpv.command("set", "start", "none")`. It then loads once, as now.
+    - Once `time_pos` is available, if a non-stream with `offset_seconds > 0` is more than 1.0 s away from the offset, it falls back to the existing `_seek_with_verify` (kept unchanged until real HTTP files prove the single open).
   - `play_and_wait` maps its path with `media_location` on a box.
   - `schedule_panic` on a box sets `refresh_requested` and returns without building anything.
   - `field_player.py`:
@@ -339,6 +340,7 @@ def test_tune_opens_once_at_the_offset():
     # play_file("catalog/a.mp4", file_duration=600, offset_seconds=120) with the file existing
     # commands include ("set", "start", "120") before play("catalog/a.mp4"); play called once; no ("seek", ...) command
 def test_zero_offset_resets_start():                       # ("set", "start", "none")
+def test_open_that_misses_the_offset_falls_back_to_seek():  # FakeMPV time_pos stays 0.0 with offset 120 -> _seek_with_verify called once
 def test_box_plays_server_url_but_reports_original_path(tmp_path, monkeypatch):
     # box.json present; play_file("catalog/a.mp4", ...) -> play(url from media_location); status file file_path == "catalog/a.mp4"
 def test_box_schedule_panic_requests_refresh_and_builds_nothing(monkeypatch):
@@ -363,7 +365,11 @@ def test_input_check_reloads_when_sync_requests_it(monkeypatch, tmp_path):
 **Interfaces:**
 - Consumes: `load_box_config`, `is_box` (Task 2).
 - Produces:
-  - `build_proxy_router(server_url: str, transport: httpx.AsyncBaseTransport | None = None) -> APIRouter`. It has a catch-all `/{path:path}` for GET, POST, PUT, PATCH, DELETE and HEAD. It forwards the method, path, query string, body and headers (minus `host`) to `server_url` with `httpx.AsyncClient`. It returns a `StreamingResponse` with the upstream status and headers, minus `transfer-encoding`, `connection` and `content-encoding`.
+  - `build_proxy_router(server_url: str, transport: httpx.AsyncBaseTransport | None = None) -> APIRouter`. It has a catch-all `/{path:path}` for GET, POST, PUT, PATCH, DELETE and HEAD, and it reuses one `httpx.AsyncClient(base_url=server_url, follow_redirects=False, timeout=httpx.Timeout(10, read=None))`.
+    - It forwards the method, path, raw query string, body and request headers. The request headers exclude `host` and the hop-by-hop set: `connection`, `keep-alive`, `proxy-authenticate`, `proxy-authorization`, `te`, `trailer`, `transfer-encoding`, `upgrade`.
+    - It sends with `stream=True` and returns a `StreamingResponse` over `aiter_raw()`, so bytes pass through untouched. That keeps `content-encoding`, `content-length`, `content-range` and `accept-ranges` valid.
+    - Response headers are the upstream ones minus the hop-by-hop set. Redirects (3xx with `location`) pass through as is. The upstream response is closed by a `BackgroundTask` when streaming ends.
+    - A connection error returns 502 `{"detail": "server unreachable"}`.
   - In `ppv.py`: `commands_router = APIRouter(prefix="/ppv", tags=["ppv"])`, holding `play_file` and `send_key` unchanged apart from the box exists-skip.
   - In `fs42_server.py`: `build_app(box_config: dict | None) -> FastAPI`.
     - Without a config it is upstream's app: all `routers`, plus `/`, `/remote` and `/favicon.ico`.
@@ -376,6 +382,11 @@ def test_input_check_reloads_when_sync_requests_it(monkeypatch, tmp_path):
 def test_data_routes_are_proxied_with_query_and_status():  # GET /schedules/Toons?start=a&end=b -> recorded URL; upstream 404 passes through as 404
 def test_post_body_is_proxied():                            # POST /build/catalog/all body b"{}" arrives
 def test_static_pages_are_proxied():                        # GET /static/bump/bump.html -> recorded
+def test_redirect_is_passed_through_not_followed():         # upstream 307 location /static/x -> client sees 307 with same location, one upstream request
+def test_range_request_and_response_pass_through():         # client Range bytes=0-9 reaches upstream; 206 + content-range returned
+def test_compressed_body_passes_through_raw():              # upstream gzip bytes + content-encoding gzip -> identical bytes and header
+def test_hop_by_hop_headers_are_dropped():                  # upstream connection/keep-alive headers absent; x-custom kept
+def test_unreachable_server_is_502():                       # transport raises httpx.ConnectError -> 502
 def test_player_routes_stay_local():                        # GET /player/status/queue_connected -> {"queue_connected": False}; transport not called
 def test_ppv_play_file_is_local_and_skips_exists_on_box(tmp_path, monkeypatch):
     # box.json present; app.state.player_command_queue = queue.Queue();
@@ -406,10 +417,44 @@ def test_full_app_unchanged_without_box_config():           # build_app(None) st
   - `bash -n install.sh` exits 0.
   - `grep -E "moviepy|mutagen|textual|rich|jsonschema" install/requirements-box.in` prints nothing.
   - Run the `box.json` writer line on its own in a temp directory, then `python3 -m json.tool box.json`.
-- [ ] **Step 3: Document.** Add a `README.md` section "Server and boxes" covering:
+- [ ] **Step 3: Document.** Rewrite the top of `README.md` to say what this project is: FieldStation42 split into a server and player boxes, based on upstream `shane-mason/FieldStation42` at `06bf018` under MPL-2.0. Keep upstream's feature description. Add a section "Server and boxes" covering:
   - Server: `docker compose -f docker/server/compose.yml up -d` with the media mounted at the paths the catalog uses.
   - Box: `bash install.sh` and enter the server URL, then `bash install/install_services.sh`. A box needs 64-bit Linux, an X11 session, the server's time zone and mpv.
   - `box.json` fields: `media.method` is `http` or `mount` with a `root`. For a mount, the share must resolve the library symlinks on the server side; Samba can, NFS can't. `main_config` holds overrides.
   - Logos and standby images must live under the FS42 directory to reach boxes.
 - [ ] **Step 4: Run** the full suite once more. It should show 5 known failures only, plus all the new tests passing.
 - [ ] **Step 5: Commit** `feat: install player boxes and document server and boxes`
+
+### Task 10: Docker development environment
+
+**Files:**
+- Create: `docker/dev/compose.yml`, `docker/dev/seed.sh`, `docker/dev/devtv.json`, `docker/dev/README.md`
+- Test: manual (build and run in the dev project only)
+
+**Interfaces:**
+- Consumes: `docker/server/Dockerfile` (Task 4), the `/box` API (Task 3).
+- `docker/dev/compose.yml`, project name `fs42-dev`, has two services built from `docker/server/Dockerfile`, both with the repo bind-mounted at `/app`:
+  - `server`: `python3 station_42.py --server` on `4242:4242`, `TZ=Europe/Lisbon`, `restart: "no"`.
+  - `tests` (profile `test`): installs `pytest httpx` on top and runs `pytest -q -p no:cacheprovider`.
+- `docker/dev/seed.sh`, run inside the `server` container:
+  - Uses `ffmpeg -f lavfi` `testsrc2`/`sine` to write short clips into `catalog/devtv/`: 3 × 60 s `shows`, 4 × 15 s `commercials`, 2 × 5 s `bumps`.
+  - Copies `docker/dev/devtv.json` to `confs/devtv.json`.
+  - Runs `python3 station_42.py -r devtv` then `python3 station_42.py -d devtv`.
+  - It is idempotent: existing clips are kept.
+- `docker/dev/devtv.json`:
+  - A standard station `DevTV` on channel 7 with `content_dir: "catalog/devtv"`, `commercial_dir: "commercials"`, `bump_dir: "bumps"` and `schedule_increment: 0`.
+  - Every day uses one template with all 24 hours set to `{"tags": "shows"}`.
+
+- [ ] **Step 1: Implement** the four files. `docker/dev/README.md` explains:
+  - `docker compose -f docker/dev/compose.yml up -d --build server`;
+  - `docker compose -f docker/dev/compose.yml exec server bash docker/dev/seed.sh`;
+  - the `tests` profile;
+  - that a box is run on a machine with a display, with `box.json` pointing at `http://<dev host>:4242`.
+- [ ] **Step 2: Verify** in the `fs42-dev` project only:
+  - Build, `up`, then run the seed.
+  - `curl -s localhost:4242/box/version` returns a version.
+  - `curl -s "localhost:4242/box/rundown?hours=1"` contains `DevTV` blocks.
+  - `curl -s -H "Range: bytes=0-99" -o /dev/null -w "%{http_code}" "localhost:4242/box/media?path=<a plan path>"` prints `206`.
+  - `docker compose --profile test run --rm tests` passes with the 5 known failures only.
+  - Then `docker compose -f docker/dev/compose.yml down`. Never touch other projects' containers.
+- [ ] **Step 3: Commit** `feat: add a Docker development environment with a seeded test channel`
