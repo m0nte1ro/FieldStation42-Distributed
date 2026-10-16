@@ -44,6 +44,9 @@ echo -e "${GREEN}Your existing configuration files will NOT be overwritten.${NC}
 echo ""
 read -p "Press Enter to proceed (or Ctrl+C to cancel)... "
 echo ""
+echo -e "${BLUE}A player box plays channels from a FieldStation42 server instead of building its own.${NC}"
+read -p "Server URL for a player box, e.g. http://homelab:4242 (leave empty for a full install): " FS42_SERVER_URL
+echo ""
 echo -e "${BLUE}Starting installation...${NC}"
 echo ""
 
@@ -63,6 +66,17 @@ else
 fi
 
 echo -e "${INFO} Moving forward with python :: ${GREEN}$python${NC}"
+
+REQ_FILE=install/requirements.in
+if [ -n "$FS42_SERVER_URL" ]; then
+  REQ_FILE=install/requirements-box.in
+  if [ -f box.json ]; then
+    echo -e "${WARN} box.json already exists - keeping it"
+  else
+    FS42_SERVER_URL="$FS42_SERVER_URL" $python -c 'import json, os; json.dump({"server_url": os.environ["FS42_SERVER_URL"], "media": {"method": "http"}, "main_config": {}}, open("box.json", "w"), indent=2)'
+    echo -e "${CHECK} Wrote box.json - this install is a player box for ${GREEN}$FS42_SERVER_URL${NC}"
+  fi
+fi
 echo -e "${INFO} Creating python virtual environment..."
 
 if [ -f /.dockerenv ]; then
@@ -109,7 +123,7 @@ while IFS= read -r package || [ -n "$package" ]; do
     echo -e "${WARN} Failed to install $package - continuing with other packages"
     failed_packages="${failed_packages}  • $package\n"
   fi
-done < install/requirements.in
+done < "$REQ_FILE"
 
 if [ -n "$failed_packages" ]; then
   echo ""
