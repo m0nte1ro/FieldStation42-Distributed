@@ -19,6 +19,7 @@ from fs42.path_query import PathQuery
 from fs42.station_manager import StationManager
 from fs42.liquid_io import LiquidIO
 from fs42.autobump_agent import AutoBumpAgent
+from fs42.schedule_lock import schedule_write_lock
 
 # logging.basicConfig(format="%(asctime)s %(levelname)s:%(name)s:%(message)s", level=logging.INFO)
 
@@ -512,6 +513,12 @@ class LiquidSchedule:
         self._load_blocks()
 
     def _increment(self, how_much):
+        with schedule_write_lock():
+            # another writer may have extended the schedule since this object loaded it
+            self._load_blocks()
+            self._increment_locked(how_much)
+
+    def _increment_locked(self, how_much):
         # add time to the existing schedule
         # firsst, get the current end-of-schedule
         current_end = self._end_time()

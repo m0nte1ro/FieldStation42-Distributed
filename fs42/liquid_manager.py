@@ -6,6 +6,7 @@ from fs42.liquid_blocks import LiquidBlock, BlockPlanEntry
 from fs42.catalog import ShowCatalog
 from fs42.sequence_api import SequenceAPI
 from fs42.liquid_api import LiquidAPI
+from fs42.schedule_lock import schedule_write_lock
 
 
 class ScheduleQueryNotInBounds(Exception):
@@ -54,19 +55,20 @@ class LiquidManager(object):
             return None
 
     def reset_all_schedules(self):
-        for station_config in self.station_configs:
+        with schedule_write_lock():
+            for station_config in self.station_configs:
+                if station_config["_has_schedule"]:
+                    logging.getLogger("liquid").info(f"Deleting schedules for {station_config['network_name']}")
+                    self.reset_sequences(station_config)
+                    LiquidAPI.delete_blocks(station_config)
+        self.reload_schedules()
+
+    def reset_schedule(self, station_config):
+        with schedule_write_lock():
             if station_config["_has_schedule"]:
                 logging.getLogger("liquid").info(f"Deleting schedules for {station_config['network_name']}")
                 self.reset_sequences(station_config)
                 LiquidAPI.delete_blocks(station_config)
-        self.reload_schedules()
-
-    def reset_schedule(self, station_config):
-        
-        if station_config["_has_schedule"]:
-            logging.getLogger("liquid").info(f"Deleting schedules for {station_config['network_name']}")
-            self.reset_sequences(station_config)
-            LiquidAPI.delete_blocks(station_config)
         self.reload_schedules()
 
     def reset_sequences(self, station_config):
