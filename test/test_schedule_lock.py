@@ -39,15 +39,16 @@ def _recording_lock(events):
     return lock
 
 
-def test_increment_runs_under_the_lock(monkeypatch):
+def test_adding_time_runs_under_the_lock(monkeypatch):
     events = []
     monkeypatch.setattr(liquid_schedule, "schedule_write_lock", _recording_lock(events))
     schedule = LiquidSchedule.__new__(LiquidSchedule)
     schedule.conf = {"network_type": "streaming"}
     schedule._blocks = []
     schedule._load_blocks = lambda: events.append("load")
-    schedule._increment("day")
-    assert events == ["enter", "load", "exit"]
+    schedule._increment = lambda amount: events.append(amount)
+    schedule.add_days(2)
+    assert events == ["enter", "load", "day", "day", "exit"]
 
 
 def test_reset_schedule_deletes_under_the_lock(monkeypatch):

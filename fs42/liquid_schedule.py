@@ -513,12 +513,6 @@ class LiquidSchedule:
         self._load_blocks()
 
     def _increment(self, how_much):
-        with schedule_write_lock():
-            # another writer may have extended the schedule since this object loaded it
-            self._load_blocks()
-            self._increment_locked(how_much)
-
-    def _increment_locked(self, how_much):
         # add time to the existing schedule
         # firsst, get the current end-of-schedule
         current_end = self._end_time()
@@ -551,18 +545,24 @@ class LiquidSchedule:
                 # just return for now
                 return
 
+    def _locked_increments(self, amounts):
+        with schedule_write_lock():
+            # another writer may have extended the schedule since this object loaded it
+            self._load_blocks()
+            for amount in amounts:
+                self._increment(amount)
+
     def add_days(self, day_count):
-        for i in range(day_count):
-            self._increment("day")
+        self._locked_increments(["day"] * day_count)
 
     def add_week(self):
-        self._increment("week")
+        self._locked_increments(["week"])
 
     def add_month(self):
-        self._increment("month")
+        self._locked_increments(["month"])
 
     def add_amount(self, amount):
-        self._increment(amount)
+        self._locked_increments([amount])
 
     def print_schedule(self):
         for block in self._blocks:
