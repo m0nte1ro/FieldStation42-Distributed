@@ -36,7 +36,7 @@ logging.basicConfig(
 
 try:
     from fs42.overlay.ticker import run_ticker
-except ModuleNotFoundError:
+except ImportError:  # PySide6 can be installed but unusable (e.g. no libEGL)
     logging.getLogger("FieldPlayer").warning("Error importing ticker - using the ticker will cause an error.")
 
 STATE_SHELVE = "runtime/player_state.bin"
