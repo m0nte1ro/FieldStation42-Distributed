@@ -14,7 +14,8 @@
 
 - Nothing changes on screen; no behaviour change beyond removing all-in-one mode and renaming box → client.
 - Every task ends with the whole suite green: `env/bin/pytest -q -p no:cacheprovider tests` (after Task 1 there are no expected failures).
-- `client/` and `shared/` never import `server`; `shared/` never imports `client`.
+- `client/` and `shared/` never import `server`; `server/` and `shared/` never import `client`. The server image is built without `client/` and the client image without `server/` (per-Dockerfile `.dockerignore`).
+- The `/client` HTTP API is the only contract between the ends; `docs/client-api.md` documents it so another client (e.g. an Android TV app) can implement it.
 - Packages are imported as `server.…`, `client.…`, `shared.…`; processes run with the repo root as working directory (data dirs `confs/`, `catalog/`, `runtime/` stay at the root).
 - No AI attribution in commits or docs.
 
@@ -30,6 +31,7 @@
 
 | From | To |
 |---|---|
+| `GuideWindowConf` (defaults + `check_config`) from `fs42/guide_tk.py` | `shared/stations/guide_conf.py` (so loading stations never imports Tk) |
 | `fs42/station_manager.py`, `station_io.py`, `config_processor.py`, `station_config_schema.json`, `slot_reader.py`, `schedule_hint.py` | `shared/stations/manager.py`, `io.py`, `config_processor.py`, `schema.json`, `slot_reader.py`, `schedule_hint.py` |
 | `fs42/timings.py`, `title_parser.py` | `shared/timings.py`, `shared/title_parser.py` |
 | `fs42/block_plan.py`; `PlayPoint`, `ScheduleNotFound`, `ScheduleQueryNotInBounds`, `get_programming_block`/`get_play_point` logic from `liquid_manager.py`; the decode half of `box/rundown.py`; autobump prefix test | `shared/rundown.py` |
@@ -74,7 +76,7 @@
 
 ### Task 3: `server/`
 **Files:** per the mapping; `server/api/routes/client.py` serves `/client/version`, `/client/rundown`, `/client/files`, `/client/file` and `/client/media` (formerly `/box/*`); tests to `tests/server/`.
-- [ ] Add `tests/test_layout.py`: walk `client/` and `shared/` and assert no `import server` / `from server`; walk `shared/` and assert no `client` imports. It fails now (no packages yet) or is skipped for missing dirs; it must pass from Task 4 on.
+- [ ] Add `tests/test_layout.py`: `client/` and `shared/` have no `server` imports; `server/` and `shared/` have no `client` imports. It fails now (no packages yet) or is skipped for missing dirs; it must pass from Task 4 on.
 - [ ] Move the modules and static files, and fix static and schema paths (`server/api/static`, `shared/stations/schema.json`). Remove the server-side box branches (`MetadataIO`, `LiquidManager`, `StationIO` box checks).
 - [ ] `server/main.py` runs the app with the schedule keeper. `server/cli.py` is `station_42.py` with its imports updated.
 - [ ] Suite green. Commit `refactor: move the backend to server/`.
@@ -87,7 +89,7 @@
 - [ ] `tests/test_layout.py` passes. Suite green. Commit `refactor: move the frontend to client/`.
 
 ### Task 5: Docker, installers, docs
-**Files:** `server/Dockerfile`, `server/entrypoint.sh`, `compose.yml`, `.env.example`, `compose.dev.yml`, `server/dev/seed.sh`, `client/platform/install.sh`, systemd templates, `client.example.json`, `README.md`, `.gitignore`, `.dockerignore`.
+**Files:** `server/Dockerfile`, `server/Dockerfile.dockerignore` (excludes `client/`), `client/Dockerfile` + `client/Dockerfile.dockerignore` (excludes `server/`) + `client/compose.yml` (X11 and PulseAudio passthrough for a PC client), `docs/client-api.md`, `server/entrypoint.sh`, `compose.yml`, `.env.example`, `compose.dev.yml`, `server/dev/seed.sh`, `client/platform/install.sh`, systemd templates, `client.example.json`, `README.md`, `.gitignore`, `.dockerignore`.
 - [ ] `compose.yml` runs one service `server`, built from `server/Dockerfile`:
   - port `${FS42_PORT:-4242}:4242` and `TZ=${TZ:-Europe/Lisbon}`;
   - volumes `./confs`, `./catalog`, `./runtime`, and `${MEDIA_DIR:-./media}:${MEDIA_DIR:-/media}:ro`.
@@ -97,6 +99,7 @@
   - `grep -rn "fs42/\|from fs42\|import fs42"` over code, scripts and templates returns nothing;
   - in a fresh clone at `/tmp`, `docker compose up -d --build`, `curl :4242/client/version` and the console `/` both answer, then `docker compose down` and delete the clone;
   - `compose.dev.yml` seed and the tests profile pass;
-  - `bash -n` on all scripts.
+  - `bash -n` on all scripts;
+  - the built server image contains no `/app/client` and the built client image no `/app/server`.
 - [ ] README: the tree, server in three commands, client install, `client.json`.
 - [ ] Commit `refactor: one-command server and a client installer`, push, and confirm CI is green on the PR.
