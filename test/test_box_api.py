@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from fs42.catalog_io import CatalogIO  # noqa: E402
 from fs42.fluid_statements import FluidStatements  # noqa: E402
+from fs42.fs42_server.api import box as box_api  # noqa: E402
 from fs42.fs42_server.api.box import router  # noqa: E402
 from fs42.liquid_io import LiquidIO  # noqa: E402
 from fs42.station_manager import StationManager  # noqa: E402
@@ -78,6 +79,9 @@ def client(tmp_path, monkeypatch):
         )
         conn.execute("INSERT INTO file_meta (path, meta) VALUES (?, ?)",
                      (os.path.realpath(SHOW), json.dumps({"type": "episode", "title": "Pilot"})))
+    # the preset StationManager can't load from disk; tests that care replace this
+    monkeypatch.setattr(StationManager, "_reload_stations", lambda self: None, raising=False)
+    monkeypatch.setattr(box_api, "_conf_signature", None)
     app = FastAPI()
     app.include_router(router)
     yield TestClient(app)
@@ -174,3 +178,15 @@ def test_media_allows_station_media_keys_and_runtime(client):
 
 def test_media_missing_allowed_file_is_404(client):
     assert client.get("/box/media", params={"path": "catalog/toons/missing.mp4"}).status_code == 404
+
+
+def test_stations_reload_when_conf_files_change_on_disk(client, monkeypatch):
+    reloads = []
+    monkeypatch.setattr(StationManager, "_reload_stations", lambda self: reloads.append(1), raising=False)
+    client.get("/box/version")
+    client.get("/box/rundown")
+    assert len(reloads) == 1
+    with open("confs/news.json", "w") as f:
+        json.dump({"station_conf": {"network_name": "News"}}, f)
+    client.get("/box/rundown")
+    assert len(reloads) == 2

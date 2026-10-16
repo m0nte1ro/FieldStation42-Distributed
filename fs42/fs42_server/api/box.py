@@ -88,8 +88,18 @@ def media_allowed(path, stations):
     return False
 
 
+_conf_signature = None
+
+
 def _state():
+    global _conf_signature
     manager = StationManager()
+    # station configs edited on disk only load on restart upstream; boxes would get the new
+    # files but no schedule for them, so reload whenever the confs change
+    signature = sorted((p, os.stat(p).st_size, os.stat(p).st_mtime) for p in glob.glob("confs/*.json"))
+    if signature != _conf_signature:
+        manager._reload_stations()
+        _conf_signature = signature
     manifest = file_manifest(manager.stations)
     return manager, manifest, compute_version(manager.server_conf["db_path"], manifest)
 
@@ -110,19 +120,22 @@ def get_rundown(hours: int = 24):
 
 @router.get("/files")
 def get_files():
-    return file_manifest(StationManager().stations)
+    _, manifest, _ = _state()
+    return manifest
 
 
 @router.get("/file")
 def get_file(path: str):
-    if path not in {f["path"] for f in file_manifest(StationManager().stations)}:
+    _, manifest, _ = _state()
+    if path not in {f["path"] for f in manifest}:
         raise HTTPException(status_code=404, detail="not a box file")
     return FileResponse(path)
 
 
 @router.get("/media")
 def get_media(path: str):
-    if not media_allowed(path, StationManager().stations):
+    manager, _, _ = _state()
+    if not media_allowed(path, manager.stations):
         raise HTTPException(status_code=403, detail="not a media path")
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="media not found")
