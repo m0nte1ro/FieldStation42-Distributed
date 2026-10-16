@@ -1,0 +1,7 @@
+# tests: the server's packages plus the parts of the client the tests import
+# (Qt and Tk are stubbed in the tests)
+-r server/requirements.txt
+python-mpv-jsonipc
+pillow
+httpx
+pytest

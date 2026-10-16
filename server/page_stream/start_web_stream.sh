@@ -19,7 +19,7 @@ CHANNEL_ID=$(echo "$CHANNEL_NAME" | tr '[:upper:] ' '[:lower:]_' | tr -cd 'a-z0-
 # 2. Paths
 ########################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF_FILE="$SCRIPT_DIR/../confs/web_${CHANNEL_ID}.json"
+CONF_FILE="$SCRIPT_DIR/../../confs/web_${CHANNEL_ID}.json"
 URL_FILE="$SCRIPT_DIR/web_urls/${CHANNEL_ID}.json"
 HLS_DIR="$SCRIPT_DIR/hls/${CHANNEL_ID}"
 PROFILE_DIR="/tmp/chrome_${CHANNEL_ID}_profile"

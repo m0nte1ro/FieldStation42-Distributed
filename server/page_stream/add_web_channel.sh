@@ -69,10 +69,10 @@ fi
 # Paths
 # ---------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF_DIR="$SCRIPT_DIR/../confs"
+CONF_DIR="$SCRIPT_DIR/../../confs"
 URL_STORE_DIR="$SCRIPT_DIR/web_urls"
 CHANNEL_ID=$(echo "$CHANNEL_NAME" | tr '[:upper:] ' '[:lower:]_' | tr -cd 'a-z0-9_')
-HLS_DIR="$SCRIPT_DIR/../page_stream/hls/${CHANNEL_ID}"
+HLS_DIR="$SCRIPT_DIR/hls/${CHANNEL_ID}"
 CONF_FILE="${CONF_DIR}/web_${CHANNEL_ID}.json"
 URL_STORE_FILE="${URL_STORE_DIR}/${CHANNEL_ID}.json"
 PORT=$((8000 + CHANNEL_NUMBER))

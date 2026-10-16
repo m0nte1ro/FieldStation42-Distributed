@@ -187,5 +187,7 @@ web_urls/
 
 .fuse_hidden*
 
-# player box settings (see docs/superpowers/specs)
-box.json
+# client settings (copy client.example.json)
+client.json
+# default media folder for the server container
+/media/

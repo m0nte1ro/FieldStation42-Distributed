@@ -1,7 +1,7 @@
-#/usr/bin/bash
-
-cd ~/FieldStation42
+#!/usr/bin/env bash
+# Starts the player and the Pico/UART remote bridge without systemd.
+cd "$(dirname "$0")/../.." || exit 1
 . env/bin/activate
 
-python3 field_player.py 1>/dev/null 2>/dev/null & disown
-python3 fs42/command_input.py 1>/dev/null 2>/dev/null & disown
+python3 -m client.main 1>/dev/null 2>/dev/null & disown
+python3 -m client.input.uart_bridge 1>/dev/null 2>/dev/null & disown

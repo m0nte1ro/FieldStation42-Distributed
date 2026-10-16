@@ -1,0 +1,5 @@
+{
+  "server_url": "http://homelab:4242",
+  "media": {"method": "http"},
+  "main_config": {}
+}

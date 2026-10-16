@@ -2,7 +2,7 @@
 # Seeds a DevTV test channel (channel 7): generated clips, its station config,
 # a catalog and a day of schedule. Safe to run again: existing clips are kept.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 
 mkdir -p runtime confs catalog/devtv/shows catalog/devtv/commercials catalog/devtv/bumps
 for asset in static.mp4 standby.png brb.png off_air_pattern.mp4 signoff.mp4; do
@@ -22,6 +22,6 @@ for n in 1 2 3; do clip "catalog/devtv/shows/show$n.mp4" 240 testsrc2 $((300 + n
 for n in 1 2 3 4; do clip "catalog/devtv/commercials/ad$n.mp4" 15 smptebars $((900 + n * 50)); done
 for n in 1 2; do clip "catalog/devtv/bumps/bump$n.mp4" 5 rgbtestsrc 1500; done
 
-cp docker/dev/devtv.json confs/devtv.json
-python3 station_42.py -r DevTV
-python3 station_42.py -d DevTV
+cp dev/devtv.json confs/devtv.json
+python3 -m server.cli -r DevTV
+python3 -m server.cli -d DevTV

@@ -20,12 +20,12 @@ def old_loop():
                 with open("runtime/channel.socket", "w") as fp:
                     fp.write(str(timestamp))
             if command.startswith("exit"):
-                os.system("pkill -9 -f field_player.py")
+                os.system("pkill -9 -f client.main")
                 os.system("killall mpv")
                 sys.exit(-1)
 
             if command.startswith("halt"):
-                os.system("pkill -9 -f field_player.py")
+                os.system("pkill -9 -f client.main")
                 os.system("killall mpv")
                 os.system("sudo halt")
                 sys.exit(-1)
@@ -43,11 +43,11 @@ def new_loop():
                 as_json = json.loads(command)
 
                 if as_json["channel"] == 99:
-                    os.system("pkill -9 -f field_player.py")
+                    os.system("pkill -9 -f client.main")
                     os.system("killall mpv")
                     sys.exit(-1)
                 elif as_json["channel"] == 98:
-                    os.system("pkill -9 -f field_player.py")
+                    os.system("pkill -9 -f client.main")
                     os.system("killall mpv")
                     os.system("sudo halt")
                     sys.exit(-1)

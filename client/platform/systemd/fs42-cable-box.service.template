@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=__INSTALL_DIR__
-ExecStart=__INSTALL_DIR__/env/bin/python3 fs42/pi/cable_box.py
+ExecStart=__INSTALL_DIR__/env/bin/python3 -m client.input.cable_box
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

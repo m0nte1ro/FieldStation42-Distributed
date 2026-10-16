@@ -65,11 +65,11 @@ class CableBox:
         as_str = json.dumps(as_obj)
         if command == "direct" and channel == 99:
             # then we want to shut the player down
-            os.system("pkill -SIGINT -f field_player.py")
+            os.system("pkill -SIGINT -f client.main")
             sys.exit(0)
         elif command == "direct" and channel == 98:
             # then we want to shutdown and halt the system
-            os.system("pkill -9 -f field_player.py")
+            os.system("pkill -9 -f client.main")
             os.system("killall mpv")
             os.system("sudo halt")
             sys.exit(-1)

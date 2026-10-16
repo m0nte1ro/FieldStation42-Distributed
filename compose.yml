@@ -1,0 +1,20 @@
+# The FieldStation42 server: git clone, optionally cp .env.example .env, then
+#   docker compose up -d --build
+# Console and APIs on http://<host>:4242. Clients are installed separately (see client/).
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: fs42-server
+    ports:
+      - "${FS42_PORT:-4242}:4242"
+    environment:
+      - TZ=${TZ:-Europe/Lisbon}
+    volumes:
+      - ./confs:/app/confs
+      - ./catalog:/app/catalog
+      - ./runtime:/app/runtime
+      # your library shows up at /media in the server: point station content_dir (or catalog symlinks) there
+      - ${MEDIA_DIR:-./media}:/media:ro
+    restart: unless-stopped

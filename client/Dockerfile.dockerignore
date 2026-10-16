@@ -1,0 +1,10 @@
+# only what the client image needs
+*
+!client
+!shared
+!docs/static.mp4
+!docs/standby.png
+!docs/brb.png
+!docs/off_air_pattern.mp4
+!docs/signoff.mp4
+**/__pycache__

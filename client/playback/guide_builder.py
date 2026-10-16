@@ -85,7 +85,7 @@ class ScheduleQuery:
 
 class GuideBuilder:
     def __init__(
-        self, num_blocks=3, template_dir="fs42/guide_render/templates/", static_dir="fs42/guide_render/static/"
+        self, num_blocks=3, template_dir=None, static_dir=None
     ):
         # ordered array of {"conf": station_config, "schedule": schedule}
         self.num_blocks = num_blocks

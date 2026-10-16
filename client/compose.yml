@@ -1,0 +1,32 @@
+# A FieldStation42 client on a PC with Docker. From the repo root:
+#   cp client.example.json client.json   (set server_url)
+#   xhost +local:docker                  (let the container draw on your display)
+#   docker compose -f client/compose.yml up -d --build
+services:
+  client:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+    container_name: fs42-client
+    # the local API (web remote, PPV keys) answers on this machine's :4242
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - PULSE_SERVER=unix:/run/pulse/native
+      - TZ=${TZ:-Europe/Lisbon}
+    volumes:
+      - ../client.json:/app/client.json:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
+      - client-confs:/app/confs
+      - client-catalog:/app/catalog
+      - client-runtime:/app/runtime
+    # hardware video decoding
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped
+
+volumes:
+  client-confs:
+  client-catalog:
+  client-runtime:

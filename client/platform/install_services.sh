@@ -21,7 +21,7 @@ echo -e "${CYAN}═════════════════════�
 echo ""
 
 
-INSTALL_DIR=$(cd "$(dirname "$0")/.." && pwd)
+INSTALL_DIR=$(cd "$(dirname "$0")/../.." && pwd)
 echo -e "${INFO} FieldStation42 installation directory: ${GREEN}$INSTALL_DIR${NC}"
 
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
@@ -36,7 +36,7 @@ fi
 # Process templates
 echo ""
 echo -e "${INFO} Installing service files..."
-for template in "$INSTALL_DIR/install/systemd/"*.template; do
+for template in "$INSTALL_DIR/client/platform/systemd/"*.template; do
     if [ -f "$template" ]; then
         # Get the service filename (remove .template extension)
         service_name=$(basename "$template" .template)
