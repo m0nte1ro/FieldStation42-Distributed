@@ -72,6 +72,10 @@ class Block:
     break_info: dict = field(default_factory=dict)
     sequence_key: dict = None
 
+    def playback_duration(self):
+        # same as LiquidBlock.playback_duration on the server
+        return (self.end_time - self.start_time).seconds
+
 
 def block_at(blocks, when):
     if not blocks:

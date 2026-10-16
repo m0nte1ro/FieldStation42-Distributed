@@ -98,3 +98,12 @@ class TitleParser:
         cleaned = re.sub(r"[._-]", " ", filename)
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return " ".join(TitleParser._apply_case(word, upper_words) for word in cleaned.split())
+
+
+def pick_title(meta):
+    """The display title for cached file metadata (NFO or audio tags), or None."""
+    if not meta:
+        return None
+    if meta.get("type") == "episode":
+        return meta.get("show_title") or None
+    return meta.get("title") or None

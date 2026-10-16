@@ -7,7 +7,6 @@ import shutil
 import datetime
 from pathlib import Path
 
-from fs42.box.config import is_box
 from shared.stations.config_processor import ConfigProcessor
 from shared.stations import schedule_hint
 from shared import timings
@@ -33,6 +32,8 @@ class StationIO:
 
     # Fields that reference files that should exist
     FILE_CHECKS = ["content_dir", "sign_off_video", "off_air_video", "standby_image", "be_right_back_media"]
+    # clients have none of the media on disk; they set this to False before loading stations
+    check_media = True
 
     # Network types that don't have catalogs or schedules
     NO_CATALOG = {"guide", "streaming", "web", "executable"}
@@ -230,8 +231,8 @@ class StationIO:
             if key not in station_conf:
                 station_conf[key] = StationIO.OVERWATCH_DEFAULTS[key]
 
-        # Check that referenced files exist - a box streams media from the server, so it has none of them
-        for to_check in [] if is_box() else StationIO.FILE_CHECKS:
+        # Check that referenced files exist - a client streams media from the server, so it turns this off
+        for to_check in StationIO.FILE_CHECKS if StationIO.check_media else []:
             if to_check in station_conf:
                 if not os.path.exists(station_conf[to_check]):
                     self._l.error("*" * 60)

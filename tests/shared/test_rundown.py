@@ -69,9 +69,9 @@ def test_autobump_urls_are_recognised_and_stripped():
 
 
 def test_decode_rundown_round_trips_the_server_encoding():
-    from fs42.box.rundown import block_to_json
-    from fs42.catalog_entry import CatalogEntry
-    from fs42.liquid_blocks import LiquidBlock
+    from server.api.rundown_export import block_to_json
+    from server.catalog.catalog_entry import CatalogEntry
+    from server.scheduler.liquid_blocks import LiquidBlock
 
     block = LiquidBlock(CatalogEntry("catalog/toons/a b#1.mp4", 1320, "sitcom"), START,
                         START + datetime.timedelta(minutes=30), "A B", "standard", {"bump_dir": "bumps"})
@@ -88,14 +88,14 @@ def test_decode_rundown_round_trips_the_server_encoding():
 
 
 def test_server_play_point_delegates_to_shared():
-    from fs42.liquid_manager import LiquidManager
+    from server.scheduler.liquid_manager import LiquidManager
 
     manager = LiquidManager.__new__(LiquidManager)
     manager.schedules = {"Toons": [_block()]}
     stations = MagicMock()
     stations.return_value.station_by_name.return_value = STANDARD
     when = START + datetime.timedelta(seconds=100)
-    with patch("fs42.liquid_manager.StationManager", stations):
+    with patch("server.scheduler.liquid_manager.StationManager", stations):
         server = manager.get_play_point("Toons", when)
     shared = play_point(STANDARD, [_block()], when)
     assert (server.index, server.offset, server.block_title) == (shared.index, shared.offset, shared.block_title)

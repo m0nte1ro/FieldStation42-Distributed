@@ -2,9 +2,16 @@ from datetime import datetime, timedelta
 import re
 
 from shared import timings
-from shared.stations import manager as station_manager
 
 # all temporal hints should implement this interface
+
+
+def _station_manager():
+    # looked up when used: the manager imports io, which imports this module
+    from shared.stations.manager import StationManager
+
+    return StationManager()
+
 class TemporalHint:
     def __init__(self):
         pass
@@ -47,10 +54,10 @@ class DayPartHint:
 
     @staticmethod
     def test_pattern(to_test):
-        return to_test in station_manager.StationManager().get_day_parts().keys()
+        return to_test in _station_manager().get_day_parts().keys()
 
     def hint(self, when):
-        return when.hour in station_manager.StationManager().get_day_parts()[self.part_name]
+        return when.hour in _station_manager().get_day_parts()[self.part_name]
 
     def __str__(self):
         return f"{self.part_name}"
@@ -191,7 +198,7 @@ class CustomHolidayHint:
 
         # grab config from the station_manager
         if CustomHolidayHint.test_pattern(holiday_name):
-            holiday_conf_str = station_manager.StationManager().get_custom_holidays().get(holiday_name)
+            holiday_conf_str = _station_manager().get_custom_holidays().get(holiday_name)
         else:
             raise ValueError(f"Custom Holiday: {holiday_name} not found in main config")
         
@@ -218,7 +225,7 @@ class CustomHolidayHint:
 
     @staticmethod        
     def test_pattern(to_test):
-        return to_test in station_manager.StationManager().get_custom_holidays().keys()
+        return to_test in _station_manager().get_custom_holidays().keys()
 
     def hint(self, when):
         year = when.year
