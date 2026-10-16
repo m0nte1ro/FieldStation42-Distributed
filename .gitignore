@@ -186,3 +186,6 @@ hls/
 web_urls/
 
 .fuse_hidden*
+
+# player box settings (see docs/superpowers/specs)
+box.json
