@@ -1,3 +1,7 @@
 runtime
 catalog
 confs
+env
+.git
+.superpowers
+box.json

@@ -1,0 +1,11 @@
+# the server builds catalogs and schedules and serves the console, the /box API and media;
+# it never plays anything, so no mpv, Qt or input-device packages
+ffmpeg-python
+fastapi>=0.120
+starlette>=0.49.1
+uvicorn
+jsonschema
+requests
+mutagen
+rich
+pillow

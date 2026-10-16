@@ -15,6 +15,7 @@ sys.path.append(cwd)
 sys.path.append(parent)
 
 from fs42.station_manager import StationManager, StationConfigError
+from fs42.schedule_keeper import start_schedule_keeper
 from .api import routers
 
 _shutdown_queue = None
@@ -122,6 +123,7 @@ def mount_fs42_api():
     fapi.state.player_command_queue = None
     _mount_static()
     conf = StationManager().server_conf
+    start_schedule_keeper(conf.get("schedule_agent"))
     uvicorn.run(fapi, host=conf["server_host"], port=conf["server_port"])
 
 
