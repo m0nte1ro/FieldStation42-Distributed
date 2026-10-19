@@ -302,3 +302,13 @@ class TestLocalServerPort:
         parsed = urllib.parse.parse_qs(AutoBumpAgent.generate_bump_query({"title": "T", "bg_music": "logo1.mp3", "bg_video": "intro.webm"}))
         assert parsed["bg_music"] == ["http://127.0.0.1:4300/static/bump/music/logo1.mp3"]
         assert parsed["bg_video"] == ["http://127.0.0.1:4300/static/bump/video/intro.webm"]
+
+
+def test_next_up_text_is_configurable():
+    from urllib.parse import parse_qs, urlparse
+    from server.scheduler.autobump_agent import AutoBumpAgent
+
+    bump = AutoBumpAgent.next_up_bump({"title": "Panda", "duration": 7, "next_up_text": "A seguir na {network}"},
+                                      "http://127.0.0.1:4242/static/bump/bump.html", "Panda")
+    query = parse_qs(urlparse(AutoBumpAgent.extract_url(bump.path)).query)
+    assert query["subtitle"] == ["A seguir na Panda"] and "next_up_text" not in query

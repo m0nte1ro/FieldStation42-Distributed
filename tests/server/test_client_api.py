@@ -217,3 +217,51 @@ def test_conf_change_also_reloads_the_schedule_cache(client, monkeypatch):
     monkeypatch.setattr(client_api, "LiquidManager", lambda: type("L", (), {"reload_schedules": lambda self: reloads.append(1)})())
     client.get("/client/version")
     assert reloads == [1]
+
+
+AUTOBUMP = (":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=Panda&subtitle=A%20seguir%20na%20Panda"
+            "&next_network=Toons&duration=7000&countdown=false")
+MESSAGE = ":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=Panda&duration=7000&countdown=false"
+
+
+def _rendered(job):
+    _touch(job.path, b"mp4")
+    return job
+
+
+def test_rundown_swaps_rendered_autobump(client):
+    from server.bumps.jobs import job_for
+
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=MESSAGE)
+    job = _rendered(job_for(MESSAGE))
+    entry = client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][0]
+    assert entry["path"] == job.path and entry["content_type"] == "bump" and "loop" not in entry
+
+
+def test_rundown_keeps_unrendered_autobump(client):
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=MESSAGE)
+    assert client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][0]["path"] == MESSAGE
+
+
+def test_next_up_swaps_with_the_following_show(client):
+    from server.bumps.jobs import job_for
+
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=AUTOBUMP)
+    _insert_block(now + datetime.timedelta(minutes=20), now + datetime.timedelta(minutes=50), "Bluey")
+    job = _rendered(job_for(AUTOBUMP, "Bluey"))
+    assert client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][0]["path"] == job.path
+
+
+def test_next_up_at_window_end_is_kept(client):
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=AUTOBUMP)
+    assert client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][0]["path"] == AUTOBUMP
+
+
+def test_version_changes_when_a_bump_is_rendered(client):
+    before = client.get("/client/version").json()["version"]
+    _touch("runtime/bumps/abc.mp4", b"mp4")
+    assert client.get("/client/version").json()["version"] != before

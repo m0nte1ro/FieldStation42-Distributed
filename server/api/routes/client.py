@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from server.api.rundown_export import build_rundown
+from server.bumps.jobs import BUMP_DIR
 from server.scheduler.liquid_manager import LiquidManager
 from server.catalog.media_processor import MediaProcessor
 from shared.stations.manager import StationManager
@@ -63,6 +64,9 @@ def compute_version(db_path, manifest):
     except sqlite3.Error:
         count, max_id = 0, 0
     digest = hashlib.sha1(f"{count}:{max_id or 0}".encode())
+    # newly rendered bumps change what the rundown sends
+    bumps = glob.glob(os.path.join(BUMP_DIR, "*.mp4"))
+    digest.update(f"{len(bumps)}:{max((os.path.getmtime(b) for b in bumps), default=0)}".encode())
     digest.update(json.dumps(manifest, sort_keys=True).encode())
     return digest.hexdigest()
 
