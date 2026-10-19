@@ -15,7 +15,7 @@ from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 
 from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
 from client.osd.logo_display import LogoDisplay, LogoDisplayConfig
-from client.playback.config import prepare_station_loading
+from client.playback.config import load_client_config, prepare_station_loading
 
 SOCKET_FILE = "runtime/play_status.socket"
 VOLUME_SOCKET_FILE = "runtime/volume.socket"
@@ -340,7 +340,7 @@ class OsdWindow(QWidget):
 
 
 def main():
-    prepare_station_loading()
+    prepare_station_loading(load_client_config())
     app = QApplication(sys.argv)
     objects = load_objects()
     window = OsdWindow(objects)

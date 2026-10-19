@@ -25,6 +25,12 @@ while IFS= read -r package || [ -n "$package" ]; do
 done < client/requirements.txt
 [ -n "$failed" ] && echo -e "${YELLOW}Could not install:$failed (evdev only matters for IR/keyboard remotes)${NC}"
 
+web_pages=false
+read -p "Enable web channels and live autobumps? Installs a browser engine (~300 MB). (y/N): " web
+if [[ "$web" =~ ^[Yy]$ ]]; then
+  pip install -r client/requirements-web.txt && web_pages=true
+fi
+
 mkdir -p runtime confs catalog
 for f in static.mp4 standby.png brb.png off_air_pattern.mp4 signoff.mp4; do
   [ -e "runtime/$f" ] || cp "docs/$f" "runtime/$f"
@@ -34,13 +40,13 @@ if [ -f client.json ]; then
   echo -e "${GREEN}Keeping the existing client.json${NC}"
 else
   read -p "Server URL, e.g. http://homelab:4242: " server_url
-  FS42_SERVER_URL="$server_url" python3 -c 'import json, os; json.dump({"server_url": os.environ["FS42_SERVER_URL"], "media": {"method": "http"}, "main_config": {}}, open("client.json", "w"), indent=2)'
+  FS42_SERVER_URL="$server_url" FS42_WEB="$web_pages" python3 -c 'import json, os; json.dump({"server_url": os.environ["FS42_SERVER_URL"], "media": {"method": "http"}, "main_config": {}, "web_pages": os.environ["FS42_WEB"] == "true"}, open("client.json", "w"), indent=2)'
   echo -e "${GREEN}Wrote client.json${NC}"
 fi
 
 echo ""
 echo -e "${GREEN}Installed.${NC} Start it by hand with: env/bin/python3 -m client.main"
-echo "On a Raspberry Pi, web channels and autobumps also need: sudo bash client/platform/web_reqs.sh"
+[ "$web_pages" = true ] && echo "On a Raspberry Pi, web pages also need: sudo bash client/platform/web_reqs.sh"
 read -p "Start the client on boot (systemd user services)? (Y/n): " services
 if [[ ! "$services" =~ ^[Nn]$ ]]; then
   bash client/platform/install_services.sh

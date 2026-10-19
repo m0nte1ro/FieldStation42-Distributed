@@ -141,3 +141,19 @@ def test_every_block_type_round_trips_to_the_same_play_point(kind):
         if server:
             assert (client.index, client.offset, client.block_title) == (server.index, server.offset, server.block_title)
             assert [e.toJSON() for e in client.plan] == [e.toJSON() for e in server.plan]
+
+
+def test_plan_entry_json_unchanged_without_loop():
+    assert BlockPlanEntry("a.mp4", 0, 10).toJSON() == {
+        "path": "a.mp4", "skip": 0, "duration": 10, "is_stream": False, "content_type": "feature", "media_type": "video"}
+
+
+def test_loop_and_countdown_round_trip():
+    entry = BlockPlanEntry("runtime/bumps/k.mp4", 0, 133, content_type="bump", loop=True, countdown=True)
+    data = {"stations": {"S": [{
+        "liquid_type": "LiquidBlock", "start_time": START.isoformat(),
+        "end_time": (START + datetime.timedelta(minutes=30)).isoformat(), "title": "A", "break_strategy": "standard",
+        "break_info": None, "sequence_key": None, "content": None, "plan": [entry.toJSON()]}]}}
+    decoded = decode_rundown(json.loads(json.dumps(data)))["S"][0].plan[0]
+    assert (decoded.loop, decoded.countdown) == (True, True)
+    assert entry.toJSON()["loop"] is True and entry.toJSON()["countdown"] is True
