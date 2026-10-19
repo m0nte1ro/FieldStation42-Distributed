@@ -95,7 +95,15 @@ fs42 kill                     # stop it
 fs42 logs                     # follow the player's log
 ```
 
-On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`.
+On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. For example, WSL with an NVIDIA GPU draws and decodes on the GPU with:
+
+```yaml
+services:
+  client:
+    environment: {GALLIUM_DRIVER: d3d12, MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA, LIBVA_DRIVER_NAME: d3d12, LD_LIBRARY_PATH: /usr/lib/wsl/lib}
+    devices: [/dev/dxg:/dev/dxg]
+    volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]
+```
 
 ### Settings: `client.json`
 
@@ -110,6 +118,7 @@ On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in 
 - `media.method` is `http` (media streams from the server and mpv seeks straight to the right point) or `mount` with a `root`, e.g. `{"method": "mount", "root": "/mnt/fs42"}` for an SMB/NFS mount of the server's FieldStation42 directory. The share must resolve the library's symlinks on the server side: Samba can, NFS can't.
 - `main_config` holds this client's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the client's own.
 - `web_pages` (default `false`): web channels (guide page, weather, PPV menu, diagnostics) and the live fallback for an autobump that isn't rendered yet. Off, a client leaves web channels out of its lineup and shows standby for a bump that isn't ready; that keeps a 1 GB Pi comfortable. On, it needs the browser engine: answer yes in the installer, or build the Docker client with `--build-arg WEB_PAGES=true`.
+- `hwdec` (default `auto-safe`): how mpv decodes video. `auto-safe` uses the GPU wherever mpv knows it works well (VA-API on Intel and AMD, NVDEC on NVIDIA) and the CPU otherwise. On a Raspberry Pi 4, `v4l2m2m-copy` decodes H.264 in hardware.
 - `local_api_port`: only when the server runs on the same machine. The client's own API normally uses the server's port (4242); with the server there already, set e.g. `4243`. The web remote is then at `:4243/remote`, and an IR remote script needs `FS42_PORT=4243`.
 
 On power-on the client downloads the configs, the small files and a 24-hour rundown of every channel, then plays the last channel. A client that synced before starts from its last copy even when the server is down. While running it checks the server for changes every 10 seconds; new schedules take effect at the next block.

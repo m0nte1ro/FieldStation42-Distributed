@@ -15,13 +15,14 @@ def _write(tmp_path, data):
 def test_load_client_config_applies_defaults_and_strips_slash(tmp_path):
     config = load_client_config(_write(tmp_path, {"server_url": "http://homelab:4242/"}))
     assert config == {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {},
-                      "local_api_port": None, "web_pages": False}
+                      "local_api_port": None, "web_pages": False, "hwdec": "auto-safe"}
 
 
 def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
     data = {"server_url": "http://h:4242", "media": {"method": "mount", "root": "/mnt/fs42"},
             "main_config": {"start_channel": 3}}
-    assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False)
+    assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False,
+                                                                 hwdec="auto-safe")
 
 
 def test_load_client_config_without_server_url_raises(tmp_path):

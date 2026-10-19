@@ -183,6 +183,9 @@ class StationPlayer:
         if "start_mpv" in StationManager().server_conf:
             start_it = StationManager().server_conf["start_mpv"]
 
+        # media comes from the server over HTTP (or its mount); files the client has play locally
+        self.client_config = load_client_config()
+
         if not mpv:
             self._l.info("Starting MPV instance")
             # command on client: mpv --input-ipc-server=runtime/mpv.socket --idle --force-window
@@ -193,6 +196,7 @@ class StationPlayer:
                 ipc_socket="runtime/mpv.socket",
                 input_default_bindings=False,
                 **mpv_window_options(window_size()),
+                hwdec=self.client_config["hwdec"],
                 idle=True,
                 force_window=True,
                 script_opts="osc-idlescreen=no",
@@ -202,8 +206,6 @@ class StationPlayer:
         else:
             self.mpv = mpv
 
-        # media comes from the server over HTTP (or its mount); files the client has play locally
-        self.client_config = load_client_config()
         self.station_config = station_config
         # self.playlist = self.read_json(runtime_filepath)
         self.input_check_fn = input_check_fn
