@@ -98,11 +98,14 @@ fs42 logs                     # follow the player's log
 On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. For example, WSL with an NVIDIA GPU draws and decodes on the GPU with:
 
 ```yaml
+x-gpu: &gpu
+  ipc: host                       # the GPU's frames reach WSLg's X server through shared memory
+  environment: {GALLIUM_DRIVER: d3d12, MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA, LIBVA_DRIVER_NAME: d3d12, LD_LIBRARY_PATH: /usr/lib/wsl/lib}
+  devices: [/dev/dxg:/dev/dxg]
+  volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]
 services:
-  client:
-    environment: {GALLIUM_DRIVER: d3d12, MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA, LIBVA_DRIVER_NAME: d3d12, LD_LIBRARY_PATH: /usr/lib/wsl/lib}
-    devices: [/dev/dxg:/dev/dxg]
-    volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]
+  client: *gpu
+  osd: *gpu
 ```
 
 ### Settings: `client.json`
