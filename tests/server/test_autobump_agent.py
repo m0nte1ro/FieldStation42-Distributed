@@ -1,3 +1,4 @@
+import os
 import pytest
 import urllib.parse
 from server.scheduler.autobump_agent import AutoBumpAgent
@@ -312,3 +313,13 @@ def test_next_up_text_is_configurable():
                                       "http://127.0.0.1:4242/static/bump/bump.html", "Panda")
     query = parse_qs(urlparse(AutoBumpAgent.extract_url(bump.path)).query)
     assert query["subtitle"] == ["A seguir na Panda"] and "next_up_text" not in query
+
+
+def test_bare_bg_video_name_is_found_in_the_bump_video_folder(tmp_path, monkeypatch):
+    from server.scheduler.autobump_agent import AutoBumpAgent
+
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "server/api/static/bump/video"
+    folder.mkdir(parents=True)
+    (folder / "intro.webm").write_bytes(b"x")
+    assert AutoBumpAgent.resolve_bg_video_path("intro.webm") == os.path.join("server", "api", "static", "bump", "video", "intro.webm")

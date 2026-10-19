@@ -17,4 +17,6 @@ services:
       - ./runtime:/app/runtime
       # your library shows up at /media in the server: point station content_dir (or catalog symlinks) there
       - ${MEDIA_DIR:-./media}:/media:ro
+    # Chromium (autobump rendering) needs more shared memory than Docker's 64 MB default
+    shm_size: 1gb
     restart: unless-stopped

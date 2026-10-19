@@ -13,6 +13,8 @@ WORKDIR /app
 
 COPY server/requirements.txt server/requirements.txt
 RUN pip install --no-cache-dir -r server/requirements.txt
+# Chromium renders autobumps to video; it lives only in this image, never in the client's
+RUN playwright install --with-deps chromium && rm -rf /var/lib/apt/lists/*
 
 COPY shared shared
 COPY server server
