@@ -1,6 +1,7 @@
 from enum import Enum
 import logging
 
+import math
 import multiprocessing
 import time
 import datetime
@@ -531,7 +532,10 @@ class StationPlayer:
     def _media_target(self, file_path):
         return media_location(file_path, self.client_config)
 
-    def play_file(self, file_path, file_duration=None, offset_seconds=None, is_stream=False, title="Unknown", content_type=None, media_type=None):
+    def _standby_path(self):
+        return (self.station_config or {}).get("standby_image") or StationManager().server_conf.get("standby_image", "runtime/standby.png")
+
+    def play_file(self, file_path, file_duration=None, offset_seconds=None, is_stream=False, title="Unknown", content_type=None, media_type=None, loop=False):
         try:
             target = self._media_target(file_path)
             if os.path.exists(target) or is_stream or is_autobump_url(file_path) or "://" in target:
@@ -567,6 +571,11 @@ class StationPlayer:
                 
                                 #now see if this is an autobump
 
+                if is_autobump_url(file_path) and not self.client_config["web_pages"]:
+                    # not rendered by the server yet and no browser here: standby for the bump's length
+                    self._l.info("Autobump not rendered yet - showing standby")
+                    return self.play_file(self._standby_path())
+
                 if is_autobump_url(file_path):
                     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
                     web_url = self._local_page(strip_autobump(file_path))
@@ -599,8 +608,10 @@ class StationPlayer:
                 # self.mpv.vf = "lavfi=[]"
                 self._l.info(f"playing {target}")
                 # open once at the offset instead of play-then-seek, so a tune costs one open
-                seek_to = offset_seconds if not is_stream and offset_seconds is not None and offset_seconds > 0 else None
+                # a looped clip (gap filler) starts from its top: the offset is into the gap, not the clip
+                seek_to = offset_seconds if not loop and not is_stream and offset_seconds is not None and offset_seconds > 0 else None
                 self.mpv.command("set", "start", str(seek_to) if seek_to else "none")
+                self.mpv.command("set", "loop-file", "inf" if loop else "no")
                 self.mpv.command("playlist-clear")
                 self.mpv.play(target)
                 
@@ -723,6 +734,7 @@ class StationPlayer:
         self.mpv.vf = ""
         self.mpv.af = ""
         self.mpv.command("set", "start", "none")
+        self.mpv.command("set", "loop-file", "no")
         self.mpv.command("playlist-clear")
         self.mpv.command("loadfile", self._media_target(file_path), "replace")
         self.mpv.loop_playlist = "inf"
@@ -768,6 +780,7 @@ class StationPlayer:
             self.current_playing_file_path = "playlist"
 
             self.mpv.command("set", "start", "none")
+            self.mpv.command("set", "loop-file", "no")
             self.mpv.command("playlist-clear")
 
             # Load files using loadfile with 'append' flag
@@ -935,9 +948,18 @@ class StationPlayer:
 
     def show_web(self, web_config, blocking=True):
         if not WEB_RENDER_AVAILABLE:
-            self._l.error("Web rendering not available - PySide6 not installed")
-            msg = "Web rendering requires PySide6 to be installed and configured. Please check documentation."
-            return PlayerOutcome(PlayerState.EXIT_COMMAND, msg)
+            # no QtWebEngine on this client: show standby instead of stopping the player
+            self._l.error("Web rendering not available (install client/requirements-web.txt) - showing standby")
+            self.play_file(self._standby_path())
+            if not blocking:
+                return PlayerOutcome(PlayerState.SUCCESS)
+            stop_time = time.time() + web_config["duration"] if web_config.get("duration") else None
+            while not stop_time or time.time() < stop_time:
+                time.sleep(0.05)
+                response = self.input_check_fn()
+                if response and not self.handle_runtime_command_outcome(response) and not self.is_non_interrupting(response):
+                    return response
+            return PlayerOutcome(PlayerState.SUCCESS)
 
         if web_config.get("web_url"):
             web_config = dict(web_config, web_url=self._local_page(web_config["web_url"]))
@@ -1076,7 +1098,9 @@ class StationPlayer:
                 title = play_point.block_title
                 content_type = getattr(entry, 'content_type', 'feature')  # Get content_type from entry, default to 'feature'
                 media_type = getattr(entry, 'media_type', 'video')  # Get media_type from entry, default to 'video'
-                worked = self.play_file(entry.path, file_duration=entry.duration, offset_seconds=total_skip, is_stream=is_stream, title=title, content_type=content_type, media_type=media_type)
+                worked = self.play_file(entry.path, file_duration=entry.duration, offset_seconds=total_skip, is_stream=is_stream, title=title, content_type=content_type, media_type=media_type, loop=getattr(entry, "loop", False))
+                countdown = getattr(entry, "countdown", False)
+                last_countdown = None
                 if self._pending_response:
                     response = self._pending_response
                     self._pending_response = None
@@ -1124,6 +1148,13 @@ class StationPlayer:
 
                         # Calculate time remaining based on wall clock
                         time_remaining = (target_end_time - datetime.datetime.now()).total_seconds()
+
+                        # gap fillers loop a rendered clip; the countdown to the next show is drawn here
+                        if countdown and time_remaining > 0:
+                            seconds_left = math.ceil(time_remaining)
+                            if seconds_left != last_countdown:
+                                last_countdown = seconds_left
+                                self.mpv.command("show-text", f"{seconds_left // 60}:{seconds_left % 60:02d}", 1100)
 
                         # Initiate fade-to-black effect when entering fade window (only if clipped)
                         if 0 < time_remaining <= FADE_DURATION and not fade_active and is_clipped:

@@ -1,3 +1,4 @@
+import os
 import pytest
 import urllib.parse
 from server.scheduler.autobump_agent import AutoBumpAgent
@@ -302,3 +303,23 @@ class TestLocalServerPort:
         parsed = urllib.parse.parse_qs(AutoBumpAgent.generate_bump_query({"title": "T", "bg_music": "logo1.mp3", "bg_video": "intro.webm"}))
         assert parsed["bg_music"] == ["http://127.0.0.1:4300/static/bump/music/logo1.mp3"]
         assert parsed["bg_video"] == ["http://127.0.0.1:4300/static/bump/video/intro.webm"]
+
+
+def test_next_up_text_is_configurable():
+    from urllib.parse import parse_qs, urlparse
+    from server.scheduler.autobump_agent import AutoBumpAgent
+
+    bump = AutoBumpAgent.next_up_bump({"title": "Panda", "duration": 7, "next_up_text": "A seguir na {network}"},
+                                      "http://127.0.0.1:4242/static/bump/bump.html", "Panda")
+    query = parse_qs(urlparse(AutoBumpAgent.extract_url(bump.path)).query)
+    assert query["subtitle"] == ["A seguir na Panda"] and "next_up_text" not in query
+
+
+def test_bare_bg_video_name_is_found_in_the_bump_video_folder(tmp_path, monkeypatch):
+    from server.scheduler.autobump_agent import AutoBumpAgent
+
+    monkeypatch.chdir(tmp_path)
+    folder = tmp_path / "server/api/static/bump/video"
+    folder.mkdir(parents=True)
+    (folder / "intro.webm").write_bytes(b"x")
+    assert AutoBumpAgent.resolve_bg_video_path("intro.webm") == os.path.join("server", "api", "static", "bump", "video", "intro.webm")

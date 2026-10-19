@@ -19,11 +19,14 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config.setdefault("main_config", {})
     # set when the server runs on the same machine and already owns its port
     config.setdefault("local_api_port", None)
+    # web channels and live autobumps need a browser (QtWebEngine); off unless the client has it
+    config.setdefault("web_pages", False)
     return config
 
 
-def prepare_station_loading():
+def prepare_station_loading(config):
     # the client has none of the server's media on disk, so station loading must not look for it
     from shared.stations.io import StationIO
 
     StationIO.check_media = False
+    StationIO.excluded_types = set() if config["web_pages"] else {"web"}

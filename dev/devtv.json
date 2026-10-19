@@ -14,12 +14,78 @@
     "standby_image": "runtime/standby.png",
     "day_templates": {
       "all_day": {
-        "0": {"tags": "shows"}, "1": {"tags": "shows"}, "2": {"tags": "shows"}, "3": {"tags": "shows"},
-        "4": {"tags": "shows"}, "5": {"tags": "shows"}, "6": {"tags": "shows"}, "7": {"tags": "shows"},
-        "8": {"tags": "shows"}, "9": {"tags": "shows"}, "10": {"tags": "shows"}, "11": {"tags": "shows"},
-        "12": {"tags": "shows"}, "13": {"tags": "shows"}, "14": {"tags": "shows"}, "15": {"tags": "shows"},
-        "16": {"tags": "shows"}, "17": {"tags": "shows"}, "18": {"tags": "shows"}, "19": {"tags": "shows"},
-        "20": {"tags": "shows"}, "21": {"tags": "shows"}, "22": {"tags": "shows"}, "23": {"tags": "shows"}
+        "0": {
+          "tags": "shows"
+        },
+        "1": {
+          "tags": "shows"
+        },
+        "2": {
+          "tags": "shows"
+        },
+        "3": {
+          "tags": "shows"
+        },
+        "4": {
+          "tags": "shows"
+        },
+        "5": {
+          "tags": "shows"
+        },
+        "6": {
+          "tags": "shows"
+        },
+        "7": {
+          "tags": "shows"
+        },
+        "8": {
+          "tags": "shows"
+        },
+        "9": {
+          "tags": "shows"
+        },
+        "10": {
+          "tags": "shows"
+        },
+        "11": {
+          "tags": "shows"
+        },
+        "12": {
+          "tags": "shows"
+        },
+        "13": {
+          "tags": "shows"
+        },
+        "14": {
+          "tags": "shows"
+        },
+        "15": {
+          "tags": "shows"
+        },
+        "16": {
+          "tags": "shows"
+        },
+        "17": {
+          "tags": "shows"
+        },
+        "18": {
+          "tags": "shows"
+        },
+        "19": {
+          "tags": "shows"
+        },
+        "20": {
+          "tags": "shows"
+        },
+        "21": {
+          "tags": "shows"
+        },
+        "22": {
+          "tags": "shows"
+        },
+        "23": {
+          "tags": "shows"
+        }
       }
     },
     "monday": "all_day",
@@ -28,6 +94,18 @@
     "thursday": "all_day",
     "friday": "all_day",
     "saturday": "all_day",
-    "sunday": "all_day"
+    "sunday": "all_day",
+    "autobump": {
+      "title": "DevTV",
+      "subtitle": "Sempre ligada",
+      "variation": "retro",
+      "detail1": "Desenhos animados",
+      "detail2": "Filmes de fam\u00edlia",
+      "detail3": "Todos os dias",
+      "next_up_text": "A seguir na {network}",
+      "bg_music": "logo0.mp3",
+      "strategy": "both",
+      "fill_break": 0.25
+    }
   }
 }

@@ -182,7 +182,7 @@ def test_current_station_finds_a_renamed_station_by_channel_number():
 
 
 def test_autobump_page_uses_the_client_port_when_server_shares_the_machine(player, tmp_path):
-    (tmp_path / "client.json").write_text(json.dumps({"server_url": "http://localhost:4242", "local_api_port": 4243}))
+    (tmp_path / "client.json").write_text(json.dumps({"server_url": "http://localhost:4242", "local_api_port": 4243, "web_pages": True}))
     p = player()
     shown = []
     p.show_web = lambda conf, blocking=True: shown.append(conf)
@@ -191,3 +191,65 @@ def test_autobump_page_uses_the_client_port_when_server_shares_the_machine(playe
                                             "date_time_format": "%Y-%m-%dT%H:%M:%S"}
         p.play_file(":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=X", file_duration=7, offset_seconds=0)
     assert shown[0]["web_url"].startswith("http://127.0.0.1:4243/static/bump/bump.html?title=X")
+
+
+def test_loop_entry_sets_loop_file(player):
+    p = player()
+    p.play_file("catalog/a.mp4", file_duration=30, offset_seconds=0, loop=True)
+    assert ("set", "loop-file", "inf") in p.mpv.commands
+
+
+def test_other_entries_reset_loop_file(player):
+    p = player()
+    p.play_file("catalog/a.mp4", file_duration=30, offset_seconds=0)
+    assert ("set", "loop-file", "no") in p.mpv.commands
+
+
+def test_countdown_entry_shows_remaining_gap(player):
+    from shared.rundown import BlockPlanEntry, PlayPoint
+
+    p = player()
+    entry = BlockPlanEntry("catalog/a.mp4", 0, 1.2, content_type="bump", loop=True, countdown=True)
+    p._play_from_point(PlayPoint(0, 0, [entry], "Toons"))
+    shown = [c[1] for c in p.mpv.commands if c[0] == "show-text"]
+    assert shown[:2] == ["0:02", "0:01"] or shown[:1] == ["0:01"]
+    assert all(len(t.split(":")[1]) == 2 for t in shown)
+
+
+def test_unrendered_autobump_shows_standby_without_web_pages(player, tmp_path):
+    (tmp_path / "runtime").mkdir()
+    (tmp_path / "runtime/standby.png").write_bytes(b"png")
+    p = player()
+    p.show_web = lambda *a, **k: (_ for _ in ()).throw(AssertionError("opened a browser"))
+    assert p.play_file(":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=X", file_duration=7, offset_seconds=0)
+    assert p.mpv.played == ["runtime/standby.png"]
+
+
+def test_missing_webengine_shows_standby_instead_of_exiting(player, tmp_path, monkeypatch):
+    (tmp_path / "runtime").mkdir()
+    (tmp_path / "runtime/standby.png").write_bytes(b"png")
+    monkeypatch.setattr(station_player, "WEB_RENDER_AVAILABLE", False)
+    p = player()
+    outcome = p.show_web({"web_url": "http://localhost:4242/static/diagnostics.html", "duration": 0.1})
+    assert outcome.status == station_player.PlayerState.SUCCESS
+    assert p.mpv.played == ["runtime/standby.png"]
+
+
+@pytest.mark.parametrize("offset", [0, 15, 200, 7200])
+def test_tuning_into_a_loop_starts_it_without_seeking(player, offset):
+    p = player()
+    with patch.object(StationPlayer, "_seek_with_verify") as seek:
+        assert p.play_file("catalog/a.mp4", file_duration=7300, offset_seconds=offset, loop=True)
+    seek.assert_not_called()
+    assert ("set", "start", "none") in p.mpv.commands
+
+
+def test_playlists_and_ppv_reset_loop_file(player, tmp_path):
+    p = player()
+    (tmp_path / "catalog/b.mp3").write_bytes(b"x")
+    p.play_file_list(["catalog/a.mp4", "catalog/b.mp3"])
+    assert ("set", "loop-file", "no") in p.mpv.commands
+    p.mpv.commands.clear()
+    p.input_check_fn = lambda: station_player.PlayerOutcome(station_player.PlayerState.CHANNEL_CHANGE)
+    p.play_and_wait("catalog/a.mp4")
+    assert ("set", "loop-file", "no") in p.mpv.commands

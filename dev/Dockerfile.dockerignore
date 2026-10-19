@@ -1,3 +1,5 @@
 *
 !requirements-dev.txt
 !server/requirements.txt
+!client/requirements.txt
+!client/requirements-web.txt

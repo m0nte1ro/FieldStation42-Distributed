@@ -95,7 +95,7 @@ class AutoBumpAgent:
     @staticmethod
     def next_up_bump(ab_config, base_url, network_name, loopmusic=True, show_countdown=False):
         ab_config = dict(ab_config)
-        ab_config["subtitle"] = f"Coming up on {network_name}"
+        ab_config["subtitle"] = ab_config.get("next_up_text", "Coming up on {network}").format(network=network_name)
         ab_config["next_network"] = network_name
         ab_config["loopmusic"] = "true" if loopmusic else "false"
         ab_config["countdown"] = "true" if show_countdown else "false"
@@ -164,7 +164,7 @@ class AutoBumpAgent:
             return bg_video
 
         # bare filenames are served from static/bump/video, similar to bg_music
-        video_path = os.path.join("fs42", "fs42_server", "static", "bump", "video", str(bg_video))
+        video_path = os.path.join("server", "api", "static", "bump", "video", str(bg_video))
         if os.path.exists(video_path):
             return video_path
 

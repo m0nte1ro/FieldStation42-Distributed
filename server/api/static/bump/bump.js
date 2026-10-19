@@ -59,8 +59,14 @@ class StationBump {
         this.mainTitle.textContent = this.config.title;
         this.subtitle.textContent = this.config.subtitle;
 
-        // Handle nextUp shows or regular details
-        if (this.config.nextUp) {
+        // Handle a single next show (server-rendered bumps), nextUp shows or regular details
+        if (this.config.nextTitle) {
+            const detailElements = [this.detailLine1, this.detailLine2, this.detailLine3];
+            detailElements.forEach((el, index) => {
+                el.textContent = index === 0 ? this.config.nextTitle : '';
+                el.style.display = index === 0 ? 'block' : 'none';
+            });
+        } else if (this.config.nextUp) {
             await this.loadNextUpShows();
         } else {
             // Set regular detail lines
@@ -574,6 +580,7 @@ class StationBump {
             accentColor: params.get('accent') || 'white',
             duration: parseInt(params.get('duration')) || 0,
             nextUp: params.get('next_network') || null,
+            nextTitle: params.get('next_title') || null,
             variation: params.get('variation') || 'modern',
             cssOverride: params.get('css') || null,
             bgMusic: params.get('bg_music') || null,

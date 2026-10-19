@@ -1,4 +1,5 @@
-# Development: the server running from this checkout, plus the test suite. See dev/README.md.
+# Development: one container with both ends. It runs the server from this checkout; start a client
+# inside it with dev/run-client.sh (it draws on your display). See dev/README.md.
 name: fs42-dev
 
 x-dev: &dev
@@ -10,15 +11,23 @@ x-dev: &dev
   user: "${FS42_UID:-1000}:${FS42_GID:-1000}"
   volumes:
     - .:/app
+    - ${X11_SOCKET:-/tmp/.X11-unix}:/tmp/.X11-unix
+    - ${PULSE_SOCKET:-/mnt/wslg/PulseServer}:/tmp/pulse-socket
   environment:
     - TZ=${TZ:-Europe/Lisbon}
+    - DISPLAY=${DISPLAY:-:0}
+    - PULSE_SERVER=unix:/tmp/pulse-socket
+    - XDG_RUNTIME_DIR=/tmp
+  shm_size: 1gb
 
 services:
-  server:
+  dev:
     <<: *dev
+    container_name: fs42-dev
     command: ["python3", "-m", "server.main"]
     ports:
       - "${FS42_PORT:-4242}:4242"
+      - "4243:4243"
     restart: "no"
 
   tests:

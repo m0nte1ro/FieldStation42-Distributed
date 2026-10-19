@@ -398,8 +398,9 @@ if __name__ == "__main__":
         # else keep short change as default
 
     # the server's configs and rundown must be on disk before StationManager loads anything
-    prepare_station_loading()
-    client_sync = ClientSync(load_client_config())
+    client_config = load_client_config()
+    prepare_station_loading(client_config)
+    client_sync = ClientSync(client_config)
     client_sync.initial_sync()
 
     if not args.no_local_api:

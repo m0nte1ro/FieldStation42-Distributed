@@ -34,6 +34,8 @@ class StationIO:
     FILE_CHECKS = ["content_dir", "sign_off_video", "off_air_video", "standby_image", "be_right_back_media"]
     # clients have none of the media on disk; they set this to False before loading stations
     check_media = True
+    # network types a client leaves out of its lineup (web channels unless it has web pages on)
+    excluded_types = set()
 
     # Network types that don't have catalogs or schedules
     NO_CATALOG = {"guide", "streaming", "web", "executable"}
@@ -209,6 +211,9 @@ class StationIO:
         config_data["station_conf"] = ConfigProcessor.preprocess(config_data["station_conf"])
 
         station_conf = config_data["station_conf"]
+
+        if station_conf.get("network_type", "standard") in StationIO.excluded_types:
+            return None
 
         # first thing, check if there are availability rules:
         active_rules = station_conf.get("active_rules", None)

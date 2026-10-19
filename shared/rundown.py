@@ -1,14 +1,24 @@
 class BlockPlanEntry:
-    def __init__(self, the_path, skip=0, duration=-1, is_stream=False, content_type="feature", media_type="video"):
+    def __init__(self, the_path, skip=0, duration=-1, is_stream=False, content_type="feature", media_type="video",
+                 loop=False, countdown=False):
         self.path = the_path
         self.skip = skip
         self.duration = duration
         self.is_stream = is_stream
         self.content_type = content_type
         self.media_type = media_type
+        # rendered gap fillers: the client loops the clip for the gap and draws a countdown
+        self.loop = loop
+        self.countdown = countdown
 
     def toJSON(self):
-        return {"path": self.path, "skip": self.skip, "duration": self.duration, "is_stream": self.is_stream, "content_type": self.content_type, "media_type": self.media_type}
+        data = {"path": self.path, "skip": self.skip, "duration": self.duration, "is_stream": self.is_stream, "content_type": self.content_type, "media_type": self.media_type}
+        # only when set, so the plans the server stores don't change
+        if self.loop:
+            data["loop"] = True
+        if self.countdown:
+            data["countdown"] = True
+        return data
 
     def __str__(self):
         return f"PlanEntry: {self.path} skip={self.skip} duration={self.duration}"
@@ -132,7 +142,8 @@ def decode_block(data):
         start_time=datetime.datetime.fromisoformat(data["start_time"]),
         end_time=datetime.datetime.fromisoformat(data["end_time"]),
         title=data["title"],
-        plan=[BlockPlanEntry(p["path"], p["skip"], p["duration"], p["is_stream"], p["content_type"], p["media_type"])
+        plan=[BlockPlanEntry(p["path"], p["skip"], p["duration"], p["is_stream"], p["content_type"], p["media_type"],
+                             p.get("loop", False), p.get("countdown", False))
               for p in data["plan"]],
         content=_content(data["content"]),
         break_strategy=data["break_strategy"],

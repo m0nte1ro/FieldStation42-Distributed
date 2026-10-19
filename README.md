@@ -31,12 +31,16 @@ The ends talk only over HTTP: the [client API](docs/client-api.md).
 
 ## Server
 
+On the machine that hosts it (a Debian LXC on Proxmox works: enable nesting for Docker), no repository needed:
+
 ```bash
-git clone https://github.com/m0nte1ro/FieldStation42-Distributed
-cd FieldStation42-Distributed
-cp .env.example .env        # optional: port, time zone, media folder
-docker compose up -d --build
+mkdir fs42 && cd fs42
+curl -fsSLO https://raw.githubusercontent.com/m0nte1ro/FieldStation42-Distributed/main/compose.yml
+curl -fsSL https://raw.githubusercontent.com/m0nte1ro/FieldStation42-Distributed/main/.env.example -o .env   # port, time zone, media folder
+docker compose up -d        # pulls ghcr.io/m0nte1ro/fs42-server
 ```
+
+From a clone of the repository, `docker compose up -d --build` builds the same image from source.
 
 The console is at `http://<server>:4242`. On first start the server creates `confs/`, `catalog/` and `runtime/` next to `compose.yml` and fills `runtime/` with the default standby, static, sign-off and off-air media.
 
@@ -44,30 +48,43 @@ Your library is mounted from `MEDIA_DIR` (default `./media`) and appears at `/me
 
 Configure channels and build catalogs and schedules from the console as in FieldStation42 ([fieldstation42.com](https://fieldstation42.com/docs/), `docs/STATION_CONFIG_README.md`), or with the CLI: `docker compose exec server python3 -m server.cli --help`. The server keeps every channel scheduled ahead on its own (default: when less than a day is left, add a week; change it with `schedule_agent` in `confs/main_config.json`).
 
+### Autobumps
+
+Autobumps are the bumps FieldStation42 builds from a channel's `autobump` settings ("DevTV — Sempre ligada", "A seguir na DevTV: Bluey"). The server renders each one to a short video once and reuses it forever, so clients only ever play clips:
+
+- one start-of-break bump per channel look, one "coming up next" per show, and one 30-second filler loop per show (the client loops it for the gap and draws the countdown);
+- new ones render within seconds of a schedule or catalog build, and the rest every 5 minutes;
+- every text comes from the channel's `autobump` settings, including the next-up line: `"next_up_text": "A seguir na {network}"` (default `"Coming up on {network}"`);
+- "Bluey s01e03" already counts as "Bluey" (`normalize_titles`, on by default), so it's one bump per show; `"normalize_titles": false` in `confs/main_config.json` keeps full episode titles, and with them one bump per episode.
+
+The server image carries the Chromium that renders them; clients don't need one.
+
 ## Client
+
+Every client needs the **same time zone as the server** and a `client.json` (below).
 
 ### Raspberry Pi or any Linux PC (native)
 
-Requirements: 64-bit Linux, an X11 session on `DISPLAY=:0` (on Raspberry Pi OS choose X11 in `raspi-config`), the **same time zone as the server**, Python 3.11–3.13.
+Requirements: 64-bit Linux and an X11 session on `DISPLAY=:0` (on Raspberry Pi OS choose X11 in `raspi-config`), Python 3.11–3.13. On a Raspberry Pi (or any arm64 board) that means Raspberry Pi OS based on Debian 13 "trixie" or newer: the Qt wheels for arm64 need its newer C library. Download the client-only archive (`fs42-client-<version>.tar.gz`) from the [releases](https://github.com/m0nte1ro/FieldStation42-Distributed/releases):
 
 ```bash
 sudo apt install mpv python3-venv python3-tk
-git clone https://github.com/m0nte1ro/FieldStation42-Distributed
-cd FieldStation42-Distributed
-bash client/platform/install.sh     # asks for the server URL, offers to start on boot
+tar -xzf fs42-client-<version>.tar.gz && cd fs42-client
+bash client/platform/install.sh     # asks for the server URL and about web pages, offers to start on boot
 ```
 
-Web channels and autobumps on a Raspberry Pi also need `sudo bash client/platform/web_reqs.sh`.
+(From a clone of the repository the same `install.sh` works.) Web pages on a Raspberry Pi also need `sudo bash client/platform/web_reqs.sh`.
 
 ### PC with Docker
 
+In a folder with `client/compose.yml` and a `client.json` (from `client.example.json`):
+
 ```bash
-cp client.example.json client.json  # set server_url
 xhost +local:docker                 # let the containers draw on your display
-docker compose -f client/compose.yml up -d --build
+docker compose up -d                # pulls ghcr.io/m0nte1ro/fs42-client: the player and the OSD
 ```
 
-This runs the player and the OSD. The containers use the host's time zone, which must match the server's.
+In the repository: `cp client.example.json client/client.json`, then `docker compose -f client/compose.yml up -d --build` to build it. The image has no browser; build with `--build-arg WEB_PAGES=true` for web pages.
 
 ### Settings: `client.json`
 
@@ -81,6 +98,7 @@ This runs the player and the OSD. The containers use the host's time zone, which
 
 - `media.method` is `http` (media streams from the server and mpv seeks straight to the right point) or `mount` with a `root`, e.g. `{"method": "mount", "root": "/mnt/fs42"}` for an SMB/NFS mount of the server's FieldStation42 directory. The share must resolve the library's symlinks on the server side: Samba can, NFS can't.
 - `main_config` holds this client's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the client's own.
+- `web_pages` (default `false`): web channels (guide page, weather, PPV menu, diagnostics) and the live fallback for an autobump that isn't rendered yet. Off, a client leaves web channels out of its lineup and shows standby for a bump that isn't ready; that keeps a 1 GB Pi comfortable. On, it needs the browser engine: answer yes in the installer, or build the Docker client with `--build-arg WEB_PAGES=true`.
 - `local_api_port`: only when the server runs on the same machine. The client's own API normally uses the server's port (4242); with the server there already, set e.g. `4243`. The web remote is then at `:4243/remote`, and an IR remote script needs `FS42_PORT=4243`.
 
 On power-on the client downloads the configs, the small files and a 24-hour rundown of every channel, then plays the last channel. A client that synced before starts from its last copy even when the server is down. While running it checks the server for changes every 10 seconds; new schedules take effect at the next block.
@@ -98,7 +116,11 @@ python3 -m venv env && env/bin/pip install -r requirements-dev.txt
 env/bin/pytest -q tests
 ```
 
-Or in Docker, with a seeded test channel: see `dev/README.md`.
+Or one Docker container with both ends, Chromium for autobumps and a seeded test channel you can watch on your screen: see `dev/README.md`.
+
+## Publishing
+
+Pushing to `main` publishes both images (`latest`); a version tag (`git tag v1.0.0 && git push --tags`) publishes them with the version and attaches the client archive to a GitHub release. The first time, make the two packages public under the GitHub profile's Packages tab, or `docker login ghcr.io` on the machines that pull them.
 
 ## Support upstream
 
