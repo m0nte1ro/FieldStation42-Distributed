@@ -31,7 +31,20 @@ The server renders them to video instead, once, and clients just play a clip.
    - an autobump that isn't rendered yet shows the station's standby image for its length.
    With `"web_pages": true` (and the web extra installed) a client behaves as today. If
    QtWebEngine is missing anyway, a web page shows standby instead of stopping the player.
-5. **One development environment**: a single dev image with the server, the client (including
+5. **Text is the owner's language.** Every bump text already comes from the station's autobump
+   config except one phrase the server adds, "Coming up on {network}". It becomes
+   `next_up_text` in the autobump config (default `"Coming up on {network}"`, e.g.
+   `"A seguir na {network}"`). Turning on `normalize_titles` makes "Coming up next" bumps
+   per show rather than per episode (documented).
+6. **Renders happen as soon as they're needed.** Besides the 5-minute scan, the keeper scans
+   right after any catalog or schedule build (web console, CLI) and at server start.
+7. **Clients don't need the repository.** GitHub Actions publishes `ghcr.io/m0nte1ro/fs42-server`
+   (amd64) and `ghcr.io/m0nte1ro/fs42-client` (amd64 and arm64), and attaches a client-only
+   archive (client/, shared/, default media, installer) to each release. A Docker client needs
+   only `client/compose.yml` and its `client.json`; the server LXC needs only `compose.yml` and
+   `.env`.
+8. **Narration** (a pt-PT voice saying the next show) is left for a later round.
+9. **One development environment**: a single dev image with the server, the client (including
    the web extra), Chromium for rendering and the test tools. It runs the server, and a client
    can be started in the same container (with its own data directory) and shown on the
    developer's display.
@@ -63,6 +76,9 @@ The server renders them to video instead, once, and clients just play a clip.
   "content_type": "bump", "media_type": "video"}` plus `"loop": true, "countdown": true` for
   fillers.
 - `server/api/static/bump/bump.js`: the `next_title` parameter.
+- `server/scheduler/autobump_agent.py`: the next-up subtitle comes from `next_up_text`.
+- Builds (`server/api/routes/build.py` workers and `server/cli.py` schedule and catalog
+  commands) call `request_bump_scan()`; the keeper scans when requested.
 - `server/Dockerfile`: Playwright and its Chromium. `compose.yml`: `shm_size: 1gb`.
 
 ## Shared
