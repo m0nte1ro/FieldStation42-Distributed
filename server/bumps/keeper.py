@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-import sqlite3
 import threading
 import time
 
@@ -58,8 +57,7 @@ def scan_now():
 
 def _schedule_signature():
     # changes whenever a schedule is built or reset, by this process, the web console or the CLI
-    with sqlite3.connect(StationManager().server_conf["db_path"]) as conn:
-        return conn.execute("SELECT count(*), max(id) FROM liquid_blocks").fetchone()
+    return LiquidIO().signature()
 
 
 def request_bump_scan():

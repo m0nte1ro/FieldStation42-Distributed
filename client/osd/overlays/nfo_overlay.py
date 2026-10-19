@@ -51,6 +51,7 @@ def _run_overlay_app(lines, play_duration, show_seconds, overlay_cfg):
     from PySide6.QtWidgets import QApplication, QWidget
     from PySide6.QtGui import QColor, QPainter, QFont, QFontMetrics, QFontDatabase
     from PySide6.QtCore import Qt, QTimer
+    from client.platform.window import tv_rect
 
     def _qt_weight(weight_str):
         return QFont.Bold if weight_str == "bold" else QFont.Normal
@@ -69,7 +70,7 @@ def _run_overlay_app(lines, play_duration, show_seconds, overlay_cfg):
 
             screen = QApplication.primaryScreen()
             if screen:
-                screen_rect = screen.geometry()
+                screen_rect = tv_rect(screen)
                 self.setGeometry(screen_rect)
                 screen_height = screen_rect.height()
             else:

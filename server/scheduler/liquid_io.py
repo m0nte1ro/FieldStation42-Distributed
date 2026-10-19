@@ -157,6 +157,11 @@ class LiquidIO:
 
             return by_station
 
+    def signature(self):
+        # changes whenever any process builds, extends or resets a schedule
+        with self._get_connection() as connection:
+            return connection.execute("SELECT count(*), max(id) FROM liquid_blocks").fetchone()
+
     def put_liquid_blocks(self, station_name: str, liquid_blocks: list[LiquidBlock]):
         """
         Store liquid blocks in the database.

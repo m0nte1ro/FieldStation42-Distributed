@@ -39,6 +39,7 @@ from shared.rundown import PlayPoint, ScheduleNotFound, ScheduleQueryNotInBounds
 from shared.stations.manager import StationManager
 from shared.stations.slot_reader import SlotReader
 from client.playback import rundown_store
+from client.platform.window import mpv_window_options, window_size
 from client.playback.config import load_client_config
 from client.playback.media import local_page_url, media_location
 from client.playback.sync import refresh_requested
@@ -191,7 +192,7 @@ class StationPlayer:
                 start_mpv=start_it,
                 ipc_socket="runtime/mpv.socket",
                 input_default_bindings=False,
-                fs=True,
+                **mpv_window_options(window_size()),
                 idle=True,
                 force_window=True,
                 script_opts="osc-idlescreen=no",

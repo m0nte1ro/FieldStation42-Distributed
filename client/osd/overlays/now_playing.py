@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor, QPainter, QFont, QLinearGradient, QFontMetrics
 from PySide6.QtCore import Qt, QRect
 from pathlib import Path
+from client.platform.window import tv_rect
 
 
 class SingleApplication(QApplication):
@@ -68,7 +69,7 @@ class NowPlayingWindow(QWidget):
         # Make it fullscreen and get screen dimensions
         screen = QApplication.primaryScreen()
         if screen:
-            screen_rect = screen.geometry()
+            screen_rect = tv_rect(screen)
             self.setGeometry(screen_rect)
             screen_height = screen_rect.height()
         else:

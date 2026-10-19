@@ -253,3 +253,18 @@ def test_playlists_and_ppv_reset_loop_file(player, tmp_path):
     p.input_check_fn = lambda: station_player.PlayerOutcome(station_player.PlayerState.CHANNEL_CHANGE)
     p.play_and_wait("catalog/a.mp4")
     assert ("set", "loop-file", "no") in p.mpv.commands
+
+
+def test_the_player_is_fullscreen_by_default(player, monkeypatch):
+    monkeypatch.delenv("FS42_WINDOW", raising=False)
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert mpv.call_args.kwargs["fs"] is True and "geometry" not in mpv.call_args.kwargs
+
+
+def test_fs42_window_starts_mpv_in_a_window(player, monkeypatch):
+    monkeypatch.setenv("FS42_WINDOW", "960x540")
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    kwargs = mpv.call_args.kwargs
+    assert (kwargs["fs"], kwargs["geometry"], kwargs["border"]) == (False, "960x540+0+0", False)

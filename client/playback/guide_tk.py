@@ -11,6 +11,7 @@ from PIL import Image, ImageTk
 from client.playback.guide_builder import GuideBuilder
 from shared.stations.manager import StationManager
 from shared.stations.guide_conf import GuideWindowConf
+from client.platform.window import window_size
 
 
 class GuideCommands:
@@ -286,6 +287,10 @@ class GuideApp(tk.Tk):
         if "fullscreen" in user_conf and user_conf["fullscreen"]:
             user_conf["width"] = self.winfo_screenwidth()
             user_conf["height"] = self.winfo_screenheight()
+
+        if window_size():
+            # FS42_WINDOW: the guide fills the TV's window at the top-left corner
+            (user_conf["width"], user_conf["height"]), user_conf["fullscreen"] = window_size(), True
 
         if "window_decorations" not in user_conf or not user_conf["window_decorations"]:
             self.overrideredirect(True)

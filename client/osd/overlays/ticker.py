@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
 from PySide6.QtGui import QPixmap, QColor, QPaintEvent, QPainter, QFont, QFontMetrics, QLinearGradient, QPen
 from PySide6.QtCore import QTimer, Qt, QPointF, QSharedMemory, QRect
 from pathlib import Path
+from client.platform.window import tv_rect
 
 
 class SingleApplication(QApplication):
@@ -67,7 +68,7 @@ class TickerWindow(QWidget):
         # Make it fullscreen instead of fixed size
         screen = QApplication.primaryScreen()
         if screen:
-            screen_rect = screen.geometry()
+            screen_rect = tv_rect(screen)
             self.setGeometry(screen_rect)
         
         # Ticker content dimensions

@@ -23,12 +23,22 @@ class LiquidManager(object):
             self.reload_schedules()
 
     def reload_schedules(self):
+        # read the signature first: a write that lands during the load is picked up next time
+        self._signature = LiquidAPI.signature()
         self.station_configs = StationManager().stations
-        self.schedules = {}
+        self._schedules = {}
         for station in self.station_configs:
             if station["network_type"] != "guide" and station["network_type"] != "streaming":
                 _id = station["network_name"]
-                self.schedules[_id] = LiquidAPI.get_blocks(station)
+                self._schedules[_id] = LiquidAPI.get_blocks(station)
+
+    @property
+    def schedules(self):
+        # the CLI and the console's build workers write schedules from other processes:
+        # the database is the truth, this is only a copy until the table changes
+        if LiquidAPI.signature() != self._signature:
+            self.reload_schedules()
+        return self._schedules
 
     def get_schedule_by_name(self, network_name):
         if network_name in self.schedules:

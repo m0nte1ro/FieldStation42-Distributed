@@ -86,6 +86,17 @@ docker compose up -d                # pulls ghcr.io/m0nte1ro/fs42-client: the pl
 
 In the repository: `cp client.example.json client/client.json`, then `docker compose -f client/compose.yml up -d --build` to build it. The image has no browser; build with `--build-arg WEB_PAGES=true` for web pages.
 
+The `fs42` command does the same from anywhere (install it once with `ln -s "$PWD/client/platform/fs42" ~/.local/bin/fs42`):
+
+```bash
+fs42 start                    # the TV, fullscreen
+fs42 start --windowed         # in a 1280x720 window at the top-left corner (or: --windowed 960x540)
+fs42 kill                     # stop it
+fs42 logs                     # follow the player's log
+```
+
+On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`.
+
 ### Settings: `client.json`
 
 ```json

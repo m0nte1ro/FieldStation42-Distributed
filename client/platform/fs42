@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# fs42 - the Docker client on this PC:
+#   fs42 start                    the TV, fullscreen
+#   fs42 start --windowed [WxH]   in a window at the screen's top-left corner (default 1280x720)
+#   fs42 kill                     stop it (the player and its OSD)
+#   fs42 logs                     follow the player's log
+# Install once, from the repository: ln -s "$PWD/client/platform/fs42" ~/.local/bin/fs42
+set -euo pipefail
+self="$(readlink -f "$0")"
+compose=(docker compose -f "$(cd "$(dirname "$self")/.." && pwd)/compose.yml")
+
+case "${1:-}" in
+  start)
+    FS42_WINDOW=""
+    if [ "${2:-}" = "--windowed" ]; then FS42_WINDOW="${3:-1280x720}"; fi
+    export FS42_WINDOW
+    # X11 desktops: let the containers draw (WSLg doesn't need it)
+    if command -v xhost >/dev/null && [ -n "${DISPLAY:-}" ]; then xhost +local:docker >/dev/null || true; fi
+    "${compose[@]}" up -d
+    ;;
+  kill) "${compose[@]}" down ;;
+  logs) "${compose[@]}" logs -f --since 5m client ;;
+  *) sed -n '2,6p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+esac
