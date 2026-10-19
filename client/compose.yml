@@ -14,6 +14,8 @@ x-client: &client
     - PULSE_SERVER=unix:/run/pulse/native
     # a size like 1280x720 plays in a window instead of fullscreen (fs42 start --windowed)
     - FS42_WINDOW=${FS42_WINDOW:-}
+    # the OSD's frames, which mpv draws over the video (same path in both containers)
+    - FS42_OSD_FILE=/run/fs42-osd/osd.bgra
   volumes:
     - type: bind
       source: ./client.json
@@ -28,6 +30,7 @@ x-client: &client
     - client-confs:/app/confs
     - client-catalog:/app/catalog
     - client-runtime:/app/runtime
+    - osd-frames:/run/fs42-osd
   restart: unless-stopped
 
 services:
@@ -42,10 +45,13 @@ services:
     <<: *client
     container_name: fs42-osd
     depends_on: [client]
-    # channel number, logos and volume on top of the picture; starts after the first sync
+    # channel number, logos and volume, drawn by mpv over the picture; starts after the first sync
     command: ["sh", "-c", "sleep 10 && exec python3 -m client.osd.main"]
 
 volumes:
   client-confs:
   client-catalog:
   client-runtime:
+  # in memory: the OSD rewrites its frames many times a second
+  osd-frames:
+    driver_opts: {type: tmpfs, device: tmpfs}

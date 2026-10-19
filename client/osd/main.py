@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 from collections import defaultdict
@@ -9,14 +10,14 @@ sys.path.insert(0, str(project_root))
 
 from pydantic import BaseModel
 
-from PySide6.QtWidgets import QApplication, QWidget
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QPainter, QPen
 from PySide6.QtCore import Qt, QElapsedTimer, QTimer
+from python_mpv_jsonipc import MPV
 
 from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
 from client.osd.logo_display import LogoDisplay, LogoDisplayConfig
 from client.playback.config import load_client_config, prepare_station_loading
-from client.platform.window import tv_rect
+from client.osd.mpv_overlay import MpvOverlay
 
 SOCKET_FILE = "runtime/play_status.socket"
 VOLUME_SOCKET_FILE = "runtime/volume.socket"
@@ -284,32 +285,25 @@ def load_objects() -> list:
     return objects
 
 
-class OsdWindow(QWidget):
-    def __init__(self, objects: list):
-        super().__init__()
+# where the OSD's frames go for mpv to read: shared memory, never the SD card. In Docker the client
+# and the OSD share a tmpfs at this path (client/compose.yml)
+OVERLAY_FILE = os.environ.get("FS42_OSD_FILE", "/dev/shm/fs42-osd.bgra")
+MPV_SOCKET = "runtime/mpv.socket"
+
+
+class MpvOsd:
+    """Draws the OSD objects ~30 times a second into an mpv overlay over the video."""
+
+    def __init__(self, objects: list, connect=None):
         self.objects = objects
-
-        self.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-            | Qt.WindowDoesNotAcceptFocus
-            | Qt.X11BypassWindowManagerHint
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setFocusPolicy(Qt.NoFocus)
-        self.setCursor(Qt.BlankCursor)
-        self.setWindowTitle("FieldStation42 OSD")
-
-        self.setGeometry(tv_rect(QApplication.primaryScreen()))
+        self._connect = connect or (lambda: MPV(start_mpv=False, ipc_socket=MPV_SOCKET))
+        self.overlay = None
 
         self._elapsed = QElapsedTimer()
         self._elapsed.start()
         self._last_ns = self._elapsed.nsecsElapsed()
 
-        self.timer = QTimer(self)
+        self.timer = QTimer()
         self.timer.timeout.connect(self._tick)
         self.timer.start(int(1000 / 30))  # ~30 FPS, matching the old glfw.wait_events_timeout cadence
 
@@ -321,28 +315,38 @@ class OsdWindow(QWidget):
         for obj in self.objects:
             obj.update(dt)
 
-        self.update()
+        try:
+            if self.overlay is None:
+                self.overlay = MpvOverlay(self._connect(), OVERLAY_FILE)
+            self.draw(self.overlay)
+        except Exception as e:
+            # the player isn't up yet, or restarted mpv: connect again on a later tick
+            print(f"OSD waiting for mpv: {e}")
+            self.overlay = None
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
+    def draw(self, overlay):
+        image = overlay.frame()
+        if image is None:
+            return
+        painter = QPainter(image)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.TextAntialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)  # bilinear-scale logos, matching the old GL_LINEAR filtering
 
-        w, h = self.width(), self.height()
+        w, h = image.width(), image.height()
         # Draw objects with StatusDisplay on top, same ordering as before.
         for obj in sorted(self.objects, key=lambda o: isinstance(o, StatusDisplay)):
             obj.draw(painter, w, h)
 
         painter.end()
+        overlay.present()
 
 
 def main():
     prepare_station_loading(load_client_config())
-    app = QApplication(sys.argv)
-    objects = load_objects()
-    window = OsdWindow(objects)
-    window.show()
+    # no window: Qt only draws into memory, so the OSD needs no X11 or Wayland
+    app = QGuiApplication([sys.argv[0], "-platform", "offscreen"])
+    osd = MpvOsd(load_objects())  # noqa: F841 - its timer drives the OSD
     sys.exit(app.exec())
 
 

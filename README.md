@@ -117,7 +117,7 @@ On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in 
 
 On power-on the client downloads the configs, the small files and a 24-hour rundown of every channel, then plays the last channel. A client that synced before starts from its last copy even when the server is down. While running it checks the server for changes every 10 seconds; new schedules take effect at the next block.
 
-Each client answers its web remote at `http://<client>:4242/remote` (the page itself comes from the server). The OSD reads its layout from `client/osd/osd.json` (start from `client/osd/osd.json.example`).
+Each client answers its web remote at `http://<client>:4242/remote` (the page itself comes from the server). The OSD (channel, volume, logos) reads its layout from `client/osd/osd.json` (start from `client/osd/osd.json.example`). It has no window: mpv draws it over the picture, so it works the same on X11, Wayland or with no desktop at all.
 
 ## Access
 
