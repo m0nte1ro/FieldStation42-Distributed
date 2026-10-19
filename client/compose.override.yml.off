@@ -1,0 +1,24 @@
+# This machine only (WSL2 + NVIDIA), outside git: OpenGL and video decoding on the RTX through D3D12.
+services:
+  client:
+    # Mesa hands frames to WSLg's X server through shared memory (MIT-SHM)
+    ipc: host
+    environment:
+      GALLIUM_DRIVER: d3d12
+      MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA
+      LIBVA_DRIVER_NAME: d3d12
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+  osd:
+    ipc: host
+    environment:
+      GALLIUM_DRIVER: d3d12
+      MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /usr/lib/wsl:/usr/lib/wsl:ro
