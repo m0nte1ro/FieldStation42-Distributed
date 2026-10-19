@@ -73,7 +73,9 @@ tar -xzf fs42-client-<version>.tar.gz && cd fs42-client
 bash client/platform/install.sh     # asks for the server URL and about web pages, offers to start on boot
 ```
 
-(From a clone of the repository the same `install.sh` works.) Web pages on a Raspberry Pi also need `sudo bash client/platform/web_reqs.sh`.
+(From a clone of the repository the same `install.sh` works.)
+
+**Argon ONE case with the Argon remote:** answer yes when the installer asks. It turns the case's IR receiver on (`dtoverlay=gpio-ir,gpio_pin=23`, no LIRC); after a reboot, `sudo env/bin/python3 -m client.platform.argon_remote learn` asks for each button once and saves the keymap, which loads at every boot. ▲/▼ change channel, VOL+/VOL− (and ◀/▶) the volume, MUTE mutes, HOME opens the guide, BACK goes to the last channel, OK confirms, PLAY/PAUSE switches the audio track and MENU the subtitles; the power button is the case's own. Enable `fs42-remote-controller.service`, which reads the remote. Web pages on a Raspberry Pi also need `sudo bash client/platform/web_reqs.sh`.
 
 ### PC with Docker
 

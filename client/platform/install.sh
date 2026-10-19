@@ -44,10 +44,25 @@ else
   echo -e "${GREEN}Wrote client.json${NC}"
 fi
 
+argon=false
+read -p "Argon ONE case with the Argon IR remote? (y/N): " argon_case
+if [[ "$argon_case" =~ ^[Yy]$ ]]; then
+  sudo apt-get install -y ir-keytable
+  # the remote controller reads the receiver through /dev/input
+  sudo usermod -aG input "$USER"
+  sudo env/bin/python3 -m client.platform.argon_remote setup && argon=true
+fi
+
 echo ""
 echo -e "${GREEN}Installed.${NC} Start it by hand with: env/bin/python3 -m client.main"
 [ "$web_pages" = true ] && echo "On a Raspberry Pi, web pages also need: sudo bash client/platform/web_reqs.sh"
 read -p "Start the client on boot (systemd user services)? (Y/n): " services
 if [[ ! "$services" =~ ^[Nn]$ ]]; then
   bash client/platform/install_services.sh
+fi
+if [ "$argon" = true ]; then
+  echo ""
+  echo -e "${YELLOW}Argon remote: reboot, then teach it the buttons with${NC}"
+  echo "  sudo env/bin/python3 -m client.platform.argon_remote learn"
+  echo "and make sure fs42-remote-controller.service is enabled."
 fi
