@@ -1,0 +1,11 @@
+# only what the server image needs
+*
+!server
+!shared
+!docs/static.mp4
+!docs/standby.png
+!docs/brb.png
+!docs/off_air_pattern.mp4
+!docs/signoff.mp4
+!docs/logo_images
+**/__pycache__

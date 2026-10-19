@@ -1,0 +1,11 @@
+# the server: catalog building (ffprobe via ffmpeg-python), scheduling, the console and APIs.
+# it never plays anything, so no mpv, Qt, Tk or input-device packages
+ffmpeg-python
+fastapi>=0.120
+starlette>=0.49.1
+uvicorn
+jsonschema
+requests
+mutagen
+rich
+textual

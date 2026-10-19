@@ -1,0 +1,27 @@
+# Development: the server running from this checkout, plus the test suite. See dev/README.md.
+name: fs42-dev
+
+x-dev: &dev
+  build:
+    context: .
+    dockerfile: dev/Dockerfile
+  image: fs42-dev
+  # run as you, so files written into the checkout (catalog/, runtime/, confs/) stay yours
+  user: "${FS42_UID:-1000}:${FS42_GID:-1000}"
+  volumes:
+    - .:/app
+  environment:
+    - TZ=${TZ:-Europe/Lisbon}
+
+services:
+  server:
+    <<: *dev
+    command: ["python3", "-m", "server.main"]
+    ports:
+      - "${FS42_PORT:-4242}:4242"
+    restart: "no"
+
+  tests:
+    <<: *dev
+    profiles: ["test"]
+    command: ["python3", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"]

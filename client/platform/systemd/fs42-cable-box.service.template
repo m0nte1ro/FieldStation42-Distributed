@@ -1,0 +1,15 @@
+[Unit]
+Description=FieldStation42 Cable Box
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/env/bin/python3 -m client.input.cable_box
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

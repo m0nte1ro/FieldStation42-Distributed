@@ -170,3 +170,27 @@ pytest, matching `test/`:
 Manual acceptance on real boxes: two boxes on the same channel show the same thing; zapping
 feels like upstream or faster; pulling the server's network cable shows standby and recovers;
 a schedule rebuild reaches both boxes without touching them.
+
+## Code layout (revision 2026-10-16)
+
+After the first implementation the owner asked for a split you can see in the tree. The code is
+reorganised so every file is either backend, frontend or shared, and the "box mode" switches are
+removed:
+
+```
+server/   backend, runs in Docker: main.py, cli.py, catalog/, scheduler/, api/
+client/   frontend, installed on each TV: main.py, playback/, osd/, input/, platform/
+shared/   used by both: station config loading (stations/), timings, title parsing, rundown contract
+tests/    server/, client/, shared/
+```
+
+- The client always plays from a server; upstream's all-in-one mode is dropped. One machine can
+  run the server container and a client pointed at `http://localhost:4242`.
+- `client/` and `shared/` never import `server/`, and `shared/` never imports `client/`
+  (enforced by a test).
+- "Box" is renamed "client": `client.json`, the `/client` API.
+- `shared/rundown.py` is the contract between the ends: the plan entry and block format, the
+  rundown decoder, and the one "what plays at time T" calculation used by both.
+- Running the server: `git clone`, optionally edit `.env`, `docker compose up -d --build`. The
+  container copies upstream's default runtime media on first start; the media folder and time
+  zone come from `.env`.
