@@ -76,6 +76,7 @@
   - Rules: `countdown=true` makes a `filler` (`seconds=30`, params `countdown=false`, `duration=30000`, `loop`/`countdown` true). `next_network` present makes a `next_up` (params minus `next_network`, plus `next_title`). Anything else is a `message`. `seconds = int(params["duration"]) / 1000` (default 7). `key = sha1(kind + json.dumps(sorted params))[:16]`.
 - `rundown_export.build_rundown`: for each block, `next_title` is the next block's title in that station's list. Entries whose job file exists are swapped as the spec says.
 - `bump.js`: `nextTitle: params.get('next_title')`. When set, show it as the single detail line and skip the schedule fetch.
+- `autobump_agent.next_up_bump`: the subtitle is `ab_config.get("next_up_text", "Coming up on {network}").format(network=network_name)` (test `test_next_up_text_is_configurable`).
 
 - [ ] Tests first:
   - `test_message_bump_job`;
@@ -126,13 +127,16 @@
 **Interfaces:**
 - `pending_jobs(stations, now, hours=24) -> list[RenderJob]`, de-duplicated by key, skipping files that exist.
 - `scan_once(stations, render=render) -> int`, which returns the number rendered.
-- `start_bump_keeper(interval=300) -> threading.Thread`: a daemon thread whose lock guarantees one scan at a time.
+- `request_bump_scan() -> None`: wakes the keeper now.
+- `start_bump_keeper(interval=300) -> threading.Thread`: a daemon thread that scans at start, every `interval`, or when requested; a lock guarantees one scan at a time.
+- `build.py` workers and `server/cli.py` build commands call `request_bump_scan()`; the CLI has no keeper, so there it renders the pending jobs inline.
 
 - [ ] Tests first:
   - `test_pending_jobs_dedupes_and_skips_cached`;
   - `test_scan_renders_each_missing_job_once`;
   - `test_scan_survives_a_failing_render`;
-  - `test_overlapping_scans_do_not_double_render`.
+  - `test_overlapping_scans_do_not_double_render`;
+  - `test_requested_scan_runs_before_the_interval`.
 - [ ] Implement and start it in `server/api/app.run()`.
 - [ ] Suite green.
 - [ ] Commit `feat: keep autobumps rendered ahead on the server`.
@@ -161,3 +165,24 @@
   - the server image has Chromium;
   - the suite passes in the container.
 - [ ] Commit `feat: one dev environment for both ends`. Push, and confirm CI is green.
+
+### Task 6: Publish images and the client-only download
+
+**Files:** `.github/workflows/publish.yml`, `client/compose.yml`, `compose.yml`, `client/platform/make_bundle.sh`, `README.md`.
+
+- [ ] `publish.yml`: on push to `main` and on tags `v*`, build with buildx and push:
+  - `ghcr.io/m0nte1ro/fs42-server` (linux/amd64);
+  - `ghcr.io/m0nte1ro/fs42-client` (linux/amd64, linux/arm64);
+  - tagged `latest` and the version tag. On tags, also run `make_bundle.sh` and attach `fs42-client-<tag>.tar.gz` to the GitHub release.
+- [ ] `make_bundle.sh`: archive `client/`, `shared/`, the five default runtime media files, `client.example.json`, `LICENSE` and a short README. Check with `tar -tzf` that it contains no `server/`.
+- [ ] Compose files reference the published image and keep `build:` for local builds. `client/compose.yml` reads `./client.json` next to it, so the folder works on its own.
+- [ ] README:
+  - the server LXC with only `compose.yml` + `.env`;
+  - a Docker client with only `client/compose.yml` + `client.json`;
+  - a native Pi from the release archive;
+  - making the GHCR packages public once.
+- [ ] Verify:
+  - `make_bundle.sh` locally (contents listed, no server code);
+  - the workflow's syntax with `rhysd/actionlint` in Docker;
+  - the compose files with `docker compose config`.
+- [ ] Commit `feat: publish server and client images and a client-only download`, push, and confirm CI and the publish workflow on `main`.
