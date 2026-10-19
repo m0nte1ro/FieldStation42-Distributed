@@ -5,7 +5,6 @@ import random
 from shared import timings
 from server.scheduler.reel_cutter import ReelCutter
 from shared.rundown import BlockPlanEntry
-from server.catalog.fluid_builder import FluidBuilder
 from server.catalog.media_processor import MediaProcessor
 
 
@@ -105,52 +104,9 @@ class LiquidBlock:
         return merged_segments
 
     def make_plan(self, catalog):
-        # first, collect any reels (commercials and bumps) we might need to buffer to the requested duration
+        # a programme always plays whole: whatever fills the rest of the block comes after it
+        self.break_strategy = "end"
         diff = self.playback_duration() - self.content_duration()
-
-        _fluid = FluidBuilder()
-
-        # Prefer chapter markers over black detection
-        break_points = _fluid.get_chapters(self.content.realpath)
-        if not break_points:
-            # Fall back to black detection if no chapters
-            break_points = _fluid.get_breaks(self.content.realpath)
-
-        strict_count = None
-        if break_points:
-            # Calculate how many breaks we need based on break_duration config
-            # If break_duration is configured, use it to determine break count
-            break_duration = self.break_info.get("break_duration", None)
-            if break_duration is None:
-                # Try to get from catalog config if not in break_info
-                break_duration = catalog.config.get("break_duration", None)
-
-            if break_duration and break_duration > 0:
-                # Calculate desired number of breaks based on total buffer and break_duration
-                # This respects the user's break_duration setting
-                desired_breaks = max(1, int(diff / break_duration))
-
-                # break_points contains content segments, so we need desired_breaks + 1 segments
-                desired_segments = desired_breaks + 1
-
-                # If we have more chapter markers than needed, select the best-positioned ones
-                if len(break_points) > desired_segments:
-                    break_points = self.clip_break_points(break_points, desired_segments, self.content_duration())
-
-                # strict_count is the number of reel blocks (commercial breaks) to create
-                # This is one less than the number of content segments
-                strict_count = len(break_points) - 1 if len(break_points) > 0 else 0
-            else:
-                # Fallback: limit breaks to no more than every 2 minutes of playback
-                max_breaks = self.playback_duration() / timings.MIN_2
-                # We need max_breaks + 1 content segments to create max_breaks commercial breaks
-                max_segments = int(max_breaks) + 1
-
-                if len(break_points) > max_segments:
-                    break_points = self.clip_break_points(break_points, max_segments, self.content_duration())
-
-                # strict_count is the number of reel blocks (one less than content segments)
-                strict_count = len(break_points) - 1 if len(break_points) > 0 else 0
 
         # is there a start bump?
         if self.start_bump:
@@ -171,32 +127,11 @@ class LiquidBlock:
                 diff,
                 commercial_dir=self.commercial_override,
                 bump_dir=self.bump_override,
-                strict_count=strict_count,
                 lookahead=self.lookahead,
                 break_strategy=self.break_strategy,
             )
-            
         else:
             self.reel_blocks = []
-
-        if strict_count:
-            rec = 0
-            for reel in self.reel_blocks:
-                rec += reel.duration
-
-            if strict_count == len(self.reel_blocks):
-                pass
-            elif strict_count > len(self.reel_blocks):
-                # only clip break_points if we have reel blocks to work with
-                # if reel_blocks is empty (e.g., diff <= 2), we don't need chapter-based breaks
-                if len(self.reel_blocks) > 0:
-                    break_points = self.clip_break_points(break_points, len(self.reel_blocks), self.content_duration())
-                else:
-                    # no reel blocks = no buffer time = no breaks needed, clear break_points
-                    break_points = []
-            else:
-                # do nothing for now, they will play at end
-                pass
 
         self.plan = ReelCutter.cut_reels_into_base(
             base_clip=self.content,
@@ -206,7 +141,6 @@ class LiquidBlock:
             break_strategy=self.break_strategy,
             start_bump=self.start_bump,
             end_bump=self.end_bump,
-            break_points=break_points,
         )
 
 

@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from server.bumps.keeper import start_bump_keeper
 from server.scheduler.schedule_keeper import start_schedule_keeper
@@ -53,6 +54,8 @@ def build_app():
     app.get("/favicon.ico", include_in_schema=False)(favicon)
     for router in routers:
         app.include_router(router)
+    # behind a TLS reverse proxy (Cloudflare, nginx), redirects keep the browser's https
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
     return app
 
 
