@@ -1,20 +1,20 @@
-# A FieldStation42 client on a PC with Docker. From the repo root:
-#   cp client.example.json client.json   (set server_url; local_api_port if the server runs on this PC)
-#   xhost +local:docker                  (let the containers draw on your display)
-#   docker compose -f client/compose.yml up -d --build
+# A FieldStation42 client on a PC with Docker. In a folder with this file and a client.json
+# (from client.example.json: set server_url; local_api_port if the server runs on this PC):
+#   xhost +local:docker            (let the containers draw on your display)
+#   docker compose up -d           (pulls the published image; in the repo, add --build to build it)
 # The host must use the server's time zone (the containers take the host's).
 x-client: &client
+  image: ghcr.io/m0nte1ro/fs42-client:latest
   build:
     context: ..
     dockerfile: client/Dockerfile
-  image: fs42-client
   network_mode: host
   environment:
     - DISPLAY=${DISPLAY:-:0}
     - PULSE_SERVER=unix:/run/pulse/native
   volumes:
     - type: bind
-      source: ../client.json
+      source: ./client.json
       target: /app/client.json
       read_only: true
       bind:

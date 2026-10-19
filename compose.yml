@@ -1,8 +1,9 @@
-# The FieldStation42 server: git clone, optionally cp .env.example .env, then
-#   docker compose up -d --build
-# Console and APIs on http://<host>:4242. Clients are installed separately (see client/).
+# The FieldStation42 server. Console and APIs on http://<host>:4242; clients are installed separately.
+#   just this file (+ .env):  docker compose up -d            (pulls the published image)
+#   in a clone of the repo:   docker compose up -d --build    (builds it from source)
 services:
   server:
+    image: ghcr.io/m0nte1ro/fs42-server:latest
     build:
       context: .
       dockerfile: server/Dockerfile
