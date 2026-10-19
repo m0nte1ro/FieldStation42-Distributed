@@ -95,15 +95,7 @@ fs42 kill                     # stop it
 fs42 logs                     # follow the player's log
 ```
 
-On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. For example, WSL with an NVIDIA GPU draws and decodes on the GPU with:
-
-```yaml
-services:
-  client:
-    environment: {GALLIUM_DRIVER: d3d12, MESA_D3D12_DEFAULT_ADAPTER_NAME: NVIDIA, LIBVA_DRIVER_NAME: d3d12, LD_LIBRARY_PATH: /usr/lib/wsl/lib}
-    devices: [/dev/dxg:/dev/dxg]
-    volumes: [/usr/lib/wsl:/usr/lib/wsl:ro]
-```
+On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. On WSL the picture is drawn by the CPU: GPU drawing from inside a container never reaches WSLg's screen (its X server lives in a separate system distro). Hardware decoding matters on the real TVs, where mpv talks to the GPU directly.
 
 ### Settings: `client.json`
 
