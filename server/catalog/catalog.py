@@ -747,6 +747,10 @@ class ShowCatalog:
         break_info = SlotReader.get_break_info(self.config, when)
         strategy = break_info["break_strategy"] if break_info["break_strategy"] else strategy
         strategy = break_strategy if break_strategy else strategy
+        if "autobump" in self.config:
+            # no commercials, bumps or chance: "coming up next", then the countdown to it
+            next_up, countdown = AutoBumpAgent.after_programme(self.config, length)
+            return [ReelBlock(next_up, [], countdown)]
         blocks = []
         remaining = length
         if strategy == "end":

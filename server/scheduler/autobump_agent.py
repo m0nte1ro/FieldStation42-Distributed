@@ -8,6 +8,10 @@ from server.catalog.catalog_entry import CatalogEntry
 import urllib.parse
 
 
+# a countdown shorter than this isn't worth showing: the "coming up next" bump takes the whole gap
+MIN_COUNTDOWN_SECONDS = 3
+
+
 class AutoBumpAgent:
     url_prefix = ":autobump:="
     tag_str = ":autobump:"
@@ -45,6 +49,16 @@ class AutoBumpAgent:
         fill_bump = AutoBumpAgent.next_up_bump(ab_config, AutoBumpAgent.bump_page_url(), station_config["network_name"], False, True)
         return fill_bump
 
+
+    @staticmethod
+    def after_programme(station_config, gap):
+        """The break after a programme: one "coming up next" bump, then a countdown to the next
+        programme for the rest of the gap (None when the gap only fits the bump)."""
+        next_up = AutoBumpAgent.gen_bumps(station_config)["next_bump"]
+        if gap < next_up.duration + MIN_COUNTDOWN_SECONDS:
+            short = dict(station_config["autobump"], duration=gap)
+            return AutoBumpAgent.next_up_bump(short, AutoBumpAgent.bump_page_url(), station_config["network_name"]), None
+        return next_up, AutoBumpAgent.fill_block(station_config, gap - next_up.duration)
 
     @staticmethod
     def gen_bumps(station_config):

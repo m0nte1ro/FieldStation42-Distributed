@@ -2,7 +2,7 @@ import datetime
 import logging
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.modules.setdefault("ffmpeg", MagicMock())
 sys.modules.setdefault("moviepy", MagicMock())
@@ -41,11 +41,7 @@ def _show_segments(station_strategy, block_strategy):
     show = SimpleNamespace(path="drama.mp4", realpath="drama.mp4", duration=1320, title="Drama", content_type="feature", media_type="video")
     break_info = {"start_bump": None, "end_bump": None, "bump_dir": None, "commercial_dir": None}
     block = LiquidBlock(show, MONDAY_8PM, MONDAY_8PM + datetime.timedelta(minutes=30), "Drama", block_strategy, break_info)
-    no_markers = MagicMock()
-    no_markers.return_value.get_chapters.return_value = []
-    no_markers.return_value.get_breaks.return_value = []
-    with patch("server.scheduler.liquid_blocks.FluidBuilder", no_markers):
-        block.make_plan(_catalog(station_strategy))
+    block.make_plan(_catalog(station_strategy))
     segments, in_show = 0, False
     for entry in block.plan:
         if entry.path == "drama.mp4" and not in_show:
@@ -59,9 +55,10 @@ def test_reel_fill_uses_strategy_passed_in():
     assert len([b for b in _catalog("standard").make_reel_fill(MONDAY_8PM, 480, break_strategy="end") if b.duration]) == 1
 
 
-def test_standard_override_on_end_station_spreads_breaks_through_show():
-    segments, _ = _show_segments(station_strategy="end", block_strategy="standard")
-    assert segments > 2
+def test_standard_override_on_end_station_still_plays_the_show_whole():
+    # breaks never interrupt a programme in this fork, whatever the station or slot asks for
+    segments, plan = _show_segments(station_strategy="end", block_strategy="standard")
+    assert segments == 1 and plan[0].path == "drama.mp4"
 
 
 def test_end_override_on_standard_station_plays_one_break_after_show():
