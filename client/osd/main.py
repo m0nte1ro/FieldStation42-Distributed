@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, QElapsedTimer, QTimer
 from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
 from client.osd.logo_display import LogoDisplay, LogoDisplayConfig
 from client.playback.config import load_client_config, prepare_station_loading
+from client.platform.window import tv_rect
 
 SOCKET_FILE = "runtime/play_status.socket"
 VOLUME_SOCKET_FILE = "runtime/volume.socket"
@@ -302,10 +303,7 @@ class OsdWindow(QWidget):
         self.setCursor(Qt.BlankCursor)
         self.setWindowTitle("FieldStation42 OSD")
 
-        screen = QApplication.primaryScreen()
-        geom = screen.geometry() if screen else None
-        if geom is not None:
-            self.setGeometry(geom)
+        self.setGeometry(tv_rect(QApplication.primaryScreen()))
 
         self._elapsed = QElapsedTimer()
         self._elapsed.start()

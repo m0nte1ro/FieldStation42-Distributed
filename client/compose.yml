@@ -12,6 +12,8 @@ x-client: &client
   environment:
     - DISPLAY=${DISPLAY:-:0}
     - PULSE_SERVER=unix:/run/pulse/native
+    # a size like 1280x720 plays in a window instead of fullscreen (fs42 start --windowed)
+    - FS42_WINDOW=${FS42_WINDOW:-}
   volumes:
     - type: bind
       source: ./client.json
@@ -21,7 +23,8 @@ x-client: &client
         create_host_path: false   # a missing client.json stops compose instead of becoming a directory
     - /etc/localtime:/etc/localtime:ro
     - /tmp/.X11-unix:/tmp/.X11-unix
-    - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
+    # the host's sound server; on WSL set PULSE_SOCKET=/mnt/wslg/PulseServer
+    - ${PULSE_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native}:/run/pulse/native
     - client-confs:/app/confs
     - client-catalog:/app/catalog
     - client-runtime:/app/runtime

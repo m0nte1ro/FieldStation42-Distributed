@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEngineSettings
 from PySide6.QtQuick import QQuickWindow, QSGRendererInterface
+from client.platform.window import tv_rect, window_size
 
 class WebRender(QMainWindow):
     def __init__(self):
@@ -100,7 +101,12 @@ class WebRenderApp(QApplication):
         self.window = WebRender()
 
         # Set window properties
-        if "width" in user_conf and "height" in user_conf:
+        if window_size():
+            # FS42_WINDOW: the page fills the TV's window
+            self.window.setWindowFlags(Qt.FramelessWindowHint)
+            self.window.setGeometry(tv_rect(None))
+            self.window.show()
+        elif "width" in user_conf and "height" in user_conf:
             # Use specified dimensions
             width = user_conf["width"]
             height = user_conf["height"]

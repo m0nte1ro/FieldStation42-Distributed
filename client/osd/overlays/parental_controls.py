@@ -6,6 +6,7 @@ from queue import Empty
 from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor, QPainter, QFont, QPen
 from PySide6.QtCore import Qt, QRect, QTimer
+from client.platform.window import tv_rect
 
 
 THEMES = {
@@ -65,7 +66,7 @@ class ParentalControlsWindow(QWidget):
 
         screen = QApplication.primaryScreen()
         if screen:
-            screen_rect = screen.geometry()
+            screen_rect = tv_rect(screen)
             self.scale_factor = screen_rect.height() / 1080.0
         else:
             screen_rect = QRect(0, 0, 1920, 1080)

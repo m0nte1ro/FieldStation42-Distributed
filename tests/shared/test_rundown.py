@@ -91,11 +91,12 @@ def test_server_play_point_delegates_to_shared():
     from server.scheduler.liquid_manager import LiquidManager
 
     manager = LiquidManager.__new__(LiquidManager)
-    manager.schedules = {"Toons": [_block()]}
+    manager._schedules, manager._signature = {"Toons": [_block()]}, (1, 1)
     stations = MagicMock()
     stations.return_value.station_by_name.return_value = STANDARD
     when = START + datetime.timedelta(seconds=100)
-    with patch("server.scheduler.liquid_manager.StationManager", stations):
+    with patch("server.scheduler.liquid_manager.StationManager", stations), \
+            patch("server.scheduler.liquid_manager.LiquidAPI.signature", return_value=(1, 1)):
         server = manager.get_play_point("Toons", when)
     shared = play_point(STANDARD, [_block()], when)
     assert (server.index, server.offset, server.block_title) == (shared.index, shared.offset, shared.block_title)

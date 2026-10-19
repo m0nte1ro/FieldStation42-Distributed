@@ -23,6 +23,10 @@ class LiquidAPI:
         return LiquidIO().query_all_liquid_blocks(start, end)
 
     @staticmethod
+    def signature():
+        return LiquidIO().signature()
+
+    @staticmethod
     def delete_blocks(station_config):
         LiquidIO().delete_liquid_blocks(station_config["network_name"])
 
