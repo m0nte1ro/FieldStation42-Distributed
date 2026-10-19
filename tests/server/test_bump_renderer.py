@@ -83,3 +83,12 @@ def test_failed_ffmpeg_leaves_no_file(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         render(JOB, "http://127.0.0.1:4242", run=fails, record=_fake_record)
     assert os.listdir("runtime/bumps") == []
+
+
+def test_output_is_padded_to_the_exact_length():
+    # a recording or a song shorter than the bump must not shorten the clip
+    cmd = ffmpeg_command("rec.webm", 0.5, JOB, AudioSource("music.mp3", False, 0.3), "out.mp4")
+    assert "tpad=stop_mode=clone:stop_duration=7.000" in _arg_after(cmd, "-vf")
+    assert _arg_after(cmd, "-filter:a").startswith("apad,")
+    silent = ffmpeg_command("rec.webm", 0.5, JOB, None, "out.mp4")
+    assert "tpad=stop_mode=clone:stop_duration=7.000" in _arg_after(silent, "-vf")

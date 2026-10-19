@@ -46,10 +46,11 @@ def ffmpeg_command(recording, trim, job, audio, out):
         # a silent track, so players treat it like any other bump
         cmd += ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
     cmd += ["-map", "0:v:0", "-map", "1:a:0", "-t", f"{job.seconds:.3f}",
-            "-vf", f"scale={WIDTH}:{HEIGHT},fps={FPS},format=yuv420p"]
+            # pad with the last frame and silence, then -t cuts every clip to exactly its length
+            "-vf", f"scale={WIDTH}:{HEIGHT},fps={FPS},tpad=stop_mode=clone:stop_duration={job.seconds:.3f},format=yuv420p"]
     if audio:
         fade_start = max(job.seconds - FADE_SECONDS, 0)
-        cmd += ["-filter:a", f"volume={audio.volume},afade=t=out:st={fade_start:.3f}:d={FADE_SECONDS}"]
+        cmd += ["-filter:a", f"apad,volume={audio.volume},afade=t=out:st={fade_start:.3f}:d={FADE_SECONDS}"]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
             "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", out]
     return cmd
