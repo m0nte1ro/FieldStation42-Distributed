@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from server.bumps.keeper import start_bump_keeper
 from server.scheduler.schedule_keeper import start_schedule_keeper
 from shared.stations.manager import StationConfigError, StationManager
 
@@ -76,4 +77,5 @@ def run():
     conf = StationManager().server_conf
     _mount_static(fapi)
     start_schedule_keeper(conf.get("schedule_agent"))
+    start_bump_keeper()
     uvicorn.run(fapi, host=conf["server_host"], port=conf["server_port"])

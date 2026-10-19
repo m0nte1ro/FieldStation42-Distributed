@@ -6,6 +6,7 @@ from shared.stations.manager import StationManager
 from server.catalog.catalog_api import CatalogAPI
 from server.scheduler.liquid_manager import LiquidManager
 from server.scheduler.liquid_schedule import LiquidSchedule
+from server.bumps.keeper import request_bump_scan
 from server.catalog.catalog import ShowCatalog
 
 router = APIRouter(prefix="/build", tags=["build"])
@@ -54,6 +55,7 @@ async def rebuild_catalog(network_name: str, request: Request):
 
             with rebuild_tasks_lock:
                 rebuild_tasks[task_id]["status"] = "done"
+                request_bump_scan()
                 rebuild_tasks[task_id]["log"] += "Catalog rebuild complete.\n"
                 rebuild_tasks[task_id]["log"] += "Reloading data and state.\n"
                 command_queue = request.app.state.player_command_queue
@@ -106,6 +108,7 @@ async def add_time_to_schedule(amount: str, network_name: str, request: Request)
 
             with add_time_tasks_lock:
                 add_time_tasks[task_id]["status"] = "done"
+                request_bump_scan()
                 add_time_tasks[task_id]["log"] += "Add time to schedule complete.\n"
                 add_time_tasks[task_id]["log"] += "Reloading data and state.\n"
                 command_queue = request.app.state.player_command_queue
@@ -156,6 +159,7 @@ async def rebuild_schedule(network_name: str, request: Request):
 
             with rebuild_tasks_lock:
                 rebuild_tasks[task_id]["status"] = "done"
+                request_bump_scan()
                 rebuild_tasks[task_id]["log"] += "Schedule rebuild complete.\n"
                 rebuild_tasks[task_id]["log"] += "Reloading data and state.\n"
                 command_queue = request.app.state.player_command_queue
