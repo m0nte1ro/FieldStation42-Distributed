@@ -40,9 +40,9 @@ docker compose up -d --build
 
 The console is at `http://<server>:4242`. On first start the server creates `confs/`, `catalog/` and `runtime/` next to `compose.yml` and fills `runtime/` with the default standby, static, sign-off and off-air media.
 
-Your library is mounted from `MEDIA_DIR` (default `./media`) and appears at `/media` inside the server: point station `content_dir` values, or the symlinks in `catalog/`, there. Configure channels and build catalogs and schedules from the console as in FieldStation42 ([fieldstation42.com](https://fieldstation42.com/docs/), `docs/STATION_CONFIG_README.md`). The server keeps every channel scheduled ahead on its own (default: when less than a day is left, add a week; change it with `schedule_agent` in `confs/main_config.json`).
+Your library is mounted from `MEDIA_DIR` (default `./media`) and appears at `/media` inside the server. Keep station `content_dir` values relative, as in FieldStation42's examples (`catalog/nbc`), and make the tag folders symlinks into the library, e.g. `ln -s /media/tv/sitcoms catalog/nbc/sitcom` (create them from inside the container, or with the same `/media` path on the host, so they resolve in the server). Logos, standby images and guide images or music must live under `catalog/`, `runtime/` or `confs/` with relative paths: those are the files clients copy, and an absolute `content_dir` would keep logos from reaching them.
 
-Logos, standby images and guide images or music must live under the server's directory (relative paths, as in FieldStation42's examples) to reach the clients.
+Configure channels and build catalogs and schedules from the console as in FieldStation42 ([fieldstation42.com](https://fieldstation42.com/docs/), `docs/STATION_CONFIG_README.md`), or with the CLI: `docker compose exec server python3 -m server.cli --help`. The server keeps every channel scheduled ahead on its own (default: when less than a day is left, add a week; change it with `schedule_agent` in `confs/main_config.json`).
 
 ## Client
 
@@ -63,9 +63,11 @@ Web channels and autobumps on a Raspberry Pi also need `sudo bash client/platfor
 
 ```bash
 cp client.example.json client.json  # set server_url
-xhost +local:docker                 # let the container draw on your display
+xhost +local:docker                 # let the containers draw on your display
 docker compose -f client/compose.yml up -d --build
 ```
+
+This runs the player and the OSD. The containers use the host's time zone, which must match the server's.
 
 ### Settings: `client.json`
 
@@ -79,6 +81,7 @@ docker compose -f client/compose.yml up -d --build
 
 - `media.method` is `http` (media streams from the server and mpv seeks straight to the right point) or `mount` with a `root`, e.g. `{"method": "mount", "root": "/mnt/fs42"}` for an SMB/NFS mount of the server's FieldStation42 directory. The share must resolve the library's symlinks on the server side: Samba can, NFS can't.
 - `main_config` holds this client's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the client's own.
+- `local_api_port`: only when the server runs on the same machine. The client's own API normally uses the server's port (4242); with the server there already, set e.g. `4243`. The web remote is then at `:4243/remote`, and an IR remote script needs `FS42_PORT=4243`.
 
 On power-on the client downloads the configs, the small files and a 24-hour rundown of every channel, then plays the last channel. A client that synced before starts from its last copy even when the server is down. While running it checks the server for changes every 10 seconds; new schedules take effect at the next block.
 

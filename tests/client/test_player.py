@@ -179,3 +179,15 @@ def test_current_station_finds_a_renamed_station_by_channel_number():
     renamed = {"network_name": "Cartoons", "channel_number": 3, "hidden": False}
     old = {"network_name": "Toons", "channel_number": 3, "hidden": False}
     assert field_player.current_station(_stations(renamed), old) == (0, renamed)
+
+
+def test_autobump_page_uses_the_client_port_when_server_shares_the_machine(player, tmp_path):
+    (tmp_path / "client.json").write_text(json.dumps({"server_url": "http://localhost:4242", "local_api_port": 4243}))
+    p = player()
+    shown = []
+    p.show_web = lambda conf, blocking=True: shown.append(conf)
+    with patch.object(station_player, "StationManager") as manager:
+        manager.return_value.server_conf = {"server_port": 4242, "status_socket": str(tmp_path / "s.json"),
+                                            "date_time_format": "%Y-%m-%dT%H:%M:%S"}
+        p.play_file(":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=X", file_duration=7, offset_seconds=0)
+    assert shown[0]["web_url"].startswith("http://127.0.0.1:4243/static/bump/bump.html?title=X")

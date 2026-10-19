@@ -5,7 +5,10 @@ CLIENT_CONFIG_PATH = "client.json"
 
 
 def load_client_config(path=CLIENT_CONFIG_PATH):
-    if not os.path.exists(path):
+    if os.path.isdir(path):
+        # a Docker bind mount of a missing file creates an empty directory in its place
+        raise SystemExit(f"{path} is a directory, not a file - remove it and copy client.example.json to {path}")
+    if not os.path.isfile(path):
         raise SystemExit(f"{path} not found - run client/platform/install.sh or copy client.example.json")
     with open(path) as f:
         config = json.load(f)
@@ -14,6 +17,8 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config["server_url"] = config["server_url"].rstrip("/")
     config.setdefault("media", {"method": "http"})
     config.setdefault("main_config", {})
+    # set when the server runs on the same machine and already owns its port
+    config.setdefault("local_api_port", None)
     return config
 
 

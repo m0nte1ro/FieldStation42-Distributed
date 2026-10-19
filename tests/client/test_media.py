@@ -33,3 +33,21 @@ def test_files_the_client_has_play_locally(tmp_path, monkeypatch):
     (tmp_path / "runtime").mkdir()
     (tmp_path / "runtime/standby.png").write_bytes(b"png")
     assert media_location("runtime/standby.png", HTTP) == "runtime/standby.png"
+
+
+from client.playback.media import local_page_url  # noqa: E402
+
+
+@pytest.mark.parametrize("url", [
+    "http://127.0.0.1:4242/static/bump/bump.html?title=X",
+    "http://localhost:4242/static/diagnostics.html",
+])
+def test_pages_follow_the_client_port_when_it_differs(url):
+    config = dict(HTTP, local_api_port=4243)
+    assert local_page_url(url, config, 4242).startswith("http://127.0.0.1:4243/static/")
+
+
+def test_pages_are_unchanged_on_the_default_port_or_elsewhere():
+    assert local_page_url("http://127.0.0.1:4242/static/a.html", HTTP, 4242) == "http://127.0.0.1:4242/static/a.html"
+    other = "https://example.com/page"
+    assert local_page_url(other, dict(HTTP, local_api_port=4243), 4242) == other

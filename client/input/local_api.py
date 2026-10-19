@@ -51,7 +51,10 @@ def run(shutdown_queue, command_queue):
 
     logging.getLogger("uvicorn.access").addFilter(PlayerStatusFilter())
     _shutdown_queue = shutdown_queue
-    app = build_app(load_client_config()["server_url"])
+    config = load_client_config()
+    app = build_app(config["server_url"])
     app.state.player_command_queue = command_queue
     conf = StationManager().server_conf
-    uvicorn.run(app, host=conf["server_host"], port=conf["server_port"])
+    port = config["local_api_port"] or conf["server_port"]
+    logging.getLogger("LocalAPI").info(f"Client API on port {port}")
+    uvicorn.run(app, host=conf["server_host"], port=port)

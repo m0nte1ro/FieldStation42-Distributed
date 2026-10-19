@@ -39,7 +39,7 @@ from shared.stations.manager import StationManager
 from shared.stations.slot_reader import SlotReader
 from client.playback import rundown_store
 from client.playback.config import load_client_config
-from client.playback.media import media_location
+from client.playback.media import local_page_url, media_location
 from client.playback.sync import refresh_requested
 
 logging.basicConfig(format="%(asctime)s %(levelname)s:%(name)s:%(message)s", level=logging.INFO)
@@ -525,6 +525,9 @@ class StationPlayer:
             else:
                 self.mpv.vf = self.reception.filter()
 
+    def _local_page(self, url):
+        return local_page_url(url, self.client_config, StationManager().server_conf.get("server_port", 4242))
+
     def _media_target(self, file_path):
         return media_location(file_path, self.client_config)
 
@@ -566,7 +569,7 @@ class StationPlayer:
 
                 if is_autobump_url(file_path):
                     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-                    web_url = strip_autobump(file_path)
+                    web_url = self._local_page(strip_autobump(file_path))
                     remaining = file_duration - (offset_seconds or 0) if file_duration else None
                     if remaining is not None:
                         parsed = urlparse(web_url)
@@ -936,6 +939,8 @@ class StationPlayer:
             msg = "Web rendering requires PySide6 to be installed and configured. Please check documentation."
             return PlayerOutcome(PlayerState.EXIT_COMMAND, msg)
 
+        if web_config.get("web_url"):
+            web_config = dict(web_config, web_url=self._local_page(web_config["web_url"]))
         ctx = multiprocessing.get_context("spawn")
 
         # create the pipe to communicate with the web channel

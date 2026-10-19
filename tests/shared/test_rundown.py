@@ -99,3 +99,45 @@ def test_server_play_point_delegates_to_shared():
         server = manager.get_play_point("Toons", when)
     shared = play_point(STANDARD, [_block()], when)
     assert (server.index, server.offset, server.block_title) == (shared.index, shared.offset, shared.block_title)
+
+
+def _server_blocks():
+    from server.catalog.catalog_entry import CatalogEntry
+    from server.scheduler.liquid_blocks import (
+        LiquidBlock, LiquidClipBlock, LiquidLoopBlock, LiquidOffAirBlock, LiquidWebBlock,
+    )
+
+    end = START + datetime.timedelta(minutes=30)
+    autobump = ":autobump:=http://127.0.0.1:4242/static/bump/bump.html?title=X"
+    standard = LiquidBlock(CatalogEntry("catalog/t/a.mp4", 1320, "t"), START, end, "A", "standard",
+                           {"start_bump": None, "end_bump": None, "bump_dir": "bumps"})
+    standard.sequence_key = {"station_name": "Toons", "sequence_name": "s", "tag_path": "t"}
+    standard.plan = [BlockPlanEntry("catalog/t/a.mp4", 0, 660), BlockPlanEntry("catalog/t/c.mp4", 0, 30, content_type="commercial"),
+                     BlockPlanEntry("catalog/t/a.mp4", 660, 660)]
+    offair = LiquidOffAirBlock(CatalogEntry("runtime/off_air_pattern.mp4", 60, "off_air", content_type="off_air"), START, end, "Offair")
+    offair.plan = [BlockPlanEntry("runtime/off_air_pattern.mp4", 0, 60, content_type="off_air")] * 30
+    web = LiquidWebBlock(CatalogEntry(autobump, 1800, ":autobump:"), START, end, "Offair")
+    web.plan = [BlockPlanEntry(autobump, 0, 1800)]
+    clips = [CatalogEntry("catalog/t/clips/1.mp4", 60, "clips"), CatalogEntry("catalog/t/clips/2.mp4", 90, "clips")]
+    clip = LiquidClipBlock(clips, START, end, "clips")
+    clip.plan = [BlockPlanEntry(c.path, 0, c.duration) for c in clips] + [BlockPlanEntry("catalog/t/c.mp4", 0, 1650)]
+    loop = LiquidLoopBlock([CatalogEntry("catalog/loop/m.mp4", 200, "content")], START, end, "Loop")
+    loop.plan = [BlockPlanEntry("catalog/loop/m.mp4", 0, 200)] * 9
+    return {"standard": standard, "offair": offair, "web": web, "clip": clip, "loop": loop}
+
+
+@pytest.mark.parametrize("kind", ["standard", "offair", "web", "clip", "loop"])
+def test_every_block_type_round_trips_to_the_same_play_point(kind):
+    from server.api.rundown_export import block_to_json
+
+    block = _server_blocks()[kind]
+    decoded = decode_rundown(json.loads(json.dumps({"stations": {"S": [block_to_json(block)]}})))["S"][0]
+    assert decoded.liquid_type == type(block).__name__
+    assert (decoded.break_info, decoded.sequence_key) == (block.break_info or {}, block.sequence_key)
+    for seconds in (0, 100, 700, 1500):
+        when = START + datetime.timedelta(seconds=seconds)
+        server, client = play_point(STANDARD, [block], when), play_point(STANDARD, [decoded], when)
+        assert (client is None) == (server is None)
+        if server:
+            assert (client.index, client.offset, client.block_title) == (server.index, server.offset, server.block_title)
+            assert [e.toJSON() for e in client.plan] == [e.toJSON() for e in server.plan]

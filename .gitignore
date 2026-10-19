@@ -6,18 +6,17 @@ __pycache__/
 # my specific stuff
 *.bin
 *.bak
-runtime/
-catalog/
-env/
-local/
+# data directories at the repo root (anchored, so server/catalog/ etc. stay tracked)
+/runtime/
+/catalog/
+/env/
+/local/
+/confs/*
+!/confs/examples/
 *.kdev4*
 *.kate-swp
-*confs/*.json
-*confs/mine
 client/osd/osd.json
-fs42/guide_render/static/90s.html
 .idea/
-*confs/
 # C extensions
 *.so
 
