@@ -55,7 +55,7 @@ Autobumps are the bumps FieldStation42 builds from a channel's `autobump` settin
 - one start-of-break bump per channel look, one "coming up next" per show, and one 30-second filler loop per show (the client loops it for the gap and draws the countdown);
 - new ones render within seconds of a schedule or catalog build, and the rest every 5 minutes;
 - every text comes from the channel's `autobump` settings, including the next-up line: `"next_up_text": "A seguir na {network}"` (default `"Coming up on {network}"`);
-- turn on `"normalize_titles": true` in `confs/main_config.json` so "Bluey s01e03" counts as "Bluey": one bump per show instead of per episode.
+- "Bluey s01e03" already counts as "Bluey" (`normalize_titles`, on by default), so it's one bump per show; `"normalize_titles": false` in `confs/main_config.json` keeps full episode titles, and with them one bump per episode.
 
 The server image carries the Chromium that renders them; clients don't need one.
 
@@ -65,7 +65,7 @@ Every client needs the **same time zone as the server** and a `client.json` (bel
 
 ### Raspberry Pi or any Linux PC (native)
 
-Requirements: 64-bit Linux and an X11 session on `DISPLAY=:0` (on Raspberry Pi OS choose X11 in `raspi-config`), Python 3.11–3.13. Download the client-only archive (`fs42-client-<version>.tar.gz`) from the [releases](https://github.com/m0nte1ro/FieldStation42-Distributed/releases):
+Requirements: 64-bit Linux and an X11 session on `DISPLAY=:0` (on Raspberry Pi OS choose X11 in `raspi-config`), Python 3.11–3.13. On a Raspberry Pi (or any arm64 board) that means Raspberry Pi OS based on Debian 13 "trixie" or newer: the Qt wheels for arm64 need its newer C library. Download the client-only archive (`fs42-client-<version>.tar.gz`) from the [releases](https://github.com/m0nte1ro/FieldStation42-Distributed/releases):
 
 ```bash
 sudo apt install mpv python3-venv python3-tk

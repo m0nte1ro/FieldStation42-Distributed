@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from server.bumps.jobs import job_for
+from server.bumps.jobs import plan_jobs
 from server.catalog.metadata_io import MetadataIO
 from server.scheduler.liquid_io import LiquidIO
 
@@ -33,16 +33,16 @@ def block_to_json(block):
     }
 
 
-def _rendered(entry, next_title):
+def _swap_rendered(plan, current_title, following_title):
     # an autobump the server has rendered goes out as its clip; anything else unchanged
-    job = job_for(entry["path"], next_title)
-    if not job or not os.path.exists(job.path):
-        return entry
-    swapped = {"path": job.path, "skip": 0, "duration": entry["duration"], "is_stream": False,
-               "content_type": "bump", "media_type": "video"}
-    if job.loop:
-        swapped.update(loop=True, countdown=True)
-    return swapped
+    for i, job in plan_jobs(plan, current_title, following_title):
+        if os.path.exists(job.path):
+            swapped = {"path": job.path, "skip": 0, "duration": plan[i]["duration"], "is_stream": False,
+                       "content_type": "bump", "media_type": "video"}
+            if job.loop:
+                swapped.update(loop=True, countdown=True)
+            plan[i] = swapped
+    return plan
 
 
 def _content_paths(content):
@@ -65,8 +65,8 @@ def build_rundown(stations, now, hours):
         encoded = []
         for i, block in enumerate(blocks):
             data = block_to_json(block)
-            next_title = blocks[i + 1].title if i + 1 < len(blocks) else None
-            data["plan"] = [_rendered(entry, next_title) for entry in data["plan"]]
+            following = blocks[i + 1].title if i + 1 < len(blocks) else None
+            data["plan"] = _swap_rendered(data["plan"], block.title, following)
             encoded.append(data)
         by_station[station["network_name"]] = encoded
         for block in blocks:

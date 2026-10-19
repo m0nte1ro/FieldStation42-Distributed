@@ -5,7 +5,7 @@ import sqlite3
 import threading
 import time
 
-from server.bumps.jobs import job_for
+from server.bumps.jobs import plan_jobs
 from server.bumps.renderer import render as render_job
 from server.scheduler.liquid_io import LiquidIO
 from shared.stations.manager import StationManager
@@ -27,10 +27,9 @@ def pending_jobs(stations, now, hours=24):
             continue
         blocks = liquid.query_liquid_blocks(station["network_name"], str(now), str(end))
         for i, block in enumerate(blocks):
-            next_title = blocks[i + 1].title if i + 1 < len(blocks) else None
-            for entry in block.plan:
-                job = job_for(entry.path, next_title)
-                if job and job.key not in jobs and not os.path.exists(job.path):
+            following = blocks[i + 1].title if i + 1 < len(blocks) else None
+            for _, job in plan_jobs(block.plan, block.title, following):
+                if job.key not in jobs and not os.path.exists(job.path):
                     jobs[job.key] = job
     return list(jobs.values())
 

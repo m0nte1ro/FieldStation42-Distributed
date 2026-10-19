@@ -265,3 +265,28 @@ def test_version_changes_when_a_bump_is_rendered(client):
     before = client.get("/client/version").json()["version"]
     _touch("runtime/bumps/abc.mp4", b"mp4")
     assert client.get("/client/version").json()["version"] != before
+
+
+def test_bad_autobump_never_breaks_the_rundown(client):
+    now = _now()
+    odd = MESSAGE.replace("duration=7000", "duration=not-a-number")
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=odd)
+    response = client.get("/client/rundown")
+    assert response.status_code == 200 and response.json()["stations"]["Toons"][0]["plan"][0]["path"] == odd
+
+
+def test_mid_show_next_up_names_the_show_that_resumes(client):
+    from server.bumps.jobs import job_for
+
+    now = _now()
+    plan = [{"path": SHOW, "skip": 0, "duration": 600, "is_stream": False, "content_type": "feature", "media_type": "video"},
+            {"path": AUTOBUMP, "skip": 0, "duration": 7, "is_stream": False, "content_type": "bump", "media_type": "video"},
+            {"path": SHOW, "skip": 600, "duration": 600, "is_stream": False, "content_type": "feature", "media_type": "video"}]
+    with sqlite3.connect(DB) as conn:
+        conn.execute("INSERT INTO liquid_blocks (station, liquid_type, start_time, end_time, break_strategy, title,"
+                     " sequence_key, break_info, content_json, plan_json) VALUES ('Toons', 'LiquidBlock', ?, ?, 'standard',"
+                     " 'A', NULL, NULL, '1', ?)", (str(now - datetime.timedelta(minutes=5)), str(now + datetime.timedelta(minutes=20)), json.dumps(plan)))
+    _insert_block(now + datetime.timedelta(minutes=20), now + datetime.timedelta(minutes=50), "Peppa")
+    resumes = _rendered(job_for(AUTOBUMP, "A"))
+    _rendered(job_for(AUTOBUMP, "Peppa"))
+    assert client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][1]["path"] == resumes.path

@@ -233,3 +233,23 @@ def test_missing_webengine_shows_standby_instead_of_exiting(player, tmp_path, mo
     outcome = p.show_web({"web_url": "http://localhost:4242/static/diagnostics.html", "duration": 0.1})
     assert outcome.status == station_player.PlayerState.SUCCESS
     assert p.mpv.played == ["runtime/standby.png"]
+
+
+@pytest.mark.parametrize("offset", [0, 15, 200, 7200])
+def test_tuning_into_a_loop_starts_it_without_seeking(player, offset):
+    p = player()
+    with patch.object(StationPlayer, "_seek_with_verify") as seek:
+        assert p.play_file("catalog/a.mp4", file_duration=7300, offset_seconds=offset, loop=True)
+    seek.assert_not_called()
+    assert ("set", "start", "none") in p.mpv.commands
+
+
+def test_playlists_and_ppv_reset_loop_file(player, tmp_path):
+    p = player()
+    (tmp_path / "catalog/b.mp3").write_bytes(b"x")
+    p.play_file_list(["catalog/a.mp4", "catalog/b.mp3"])
+    assert ("set", "loop-file", "no") in p.mpv.commands
+    p.mpv.commands.clear()
+    p.input_check_fn = lambda: station_player.PlayerOutcome(station_player.PlayerState.CHANNEL_CHANGE)
+    p.play_and_wait("catalog/a.mp4")
+    assert ("set", "loop-file", "no") in p.mpv.commands

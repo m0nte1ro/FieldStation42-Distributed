@@ -49,7 +49,7 @@ def test_external_music_passes_through():
 
 def test_command_uses_bg_video_audio():
     source = audio_source({"bg_video": "http://127.0.0.1:4242/static/bump/video/intro.webm"})
-    assert source == AudioSource("server/api/static/bump/video/intro.webm", False, 1.0)
+    assert source == AudioSource("server/api/static/bump/video/intro.webm", False, 1.0, probe=True)
     assert audio_source({"bg_video": "intro.webm", "bg_video_audio": "false"}) is None
     assert audio_source({"title": "x"}) is None
 
@@ -92,3 +92,24 @@ def test_output_is_padded_to_the_exact_length():
     assert _arg_after(cmd, "-filter:a").startswith("apad,")
     silent = ffmpeg_command("rec.webm", 0.5, JOB, None, "out.mp4")
     assert "tpad=stop_mode=clone:stop_duration=7.000" in _arg_after(silent, "-vf")
+
+
+def test_loop_clips_do_not_fade_out():
+    loop_job = RenderJob("filler", "loop1", {"duration": "0"}, 30.0, loop=True, countdown=True)
+    cmd = ffmpeg_command("rec.webm", 0.5, loop_job, AudioSource("music.mp3", False, 0.3), "out.mp4")
+    assert "afade" not in _arg_after(cmd, "-filter:a")
+
+
+def test_background_video_without_sound_renders_with_silence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    job = RenderJob("message", "vid1", {"bg_video": "http://127.0.0.1:4242/static/bump/video/silent.mp4"}, 7.0)
+    commands = []
+
+    def run(cmd, **kwargs):
+        commands.append(cmd)
+        if cmd[0] == "ffprobe":
+            return MagicMock(stdout="")  # no audio stream
+        open(cmd[-1], "wb").close()
+
+    render(job, "http://127.0.0.1:4242", run=run, record=_fake_record)
+    assert "anullsrc=channel_layout=stereo:sample_rate=48000" in commands[-1]

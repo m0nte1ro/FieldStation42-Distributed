@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlsplit
 
@@ -45,12 +46,38 @@ def job_for(entry_path, next_title=None):
         params["next_title"] = next_title
 
     if filler:
-        # one loop for any gap length; the client loops it and draws the countdown
+        # one loop for any gap length; the client loops it and draws the countdown. The page gets
+        # no duration, so it never fades out at the loop point.
         kind = "filler"
-        params.update(countdown="false", duration=str(FILLER_SECONDS * 1000))
+        params.update(countdown="false", duration="0")
+        seconds = FILLER_SECONDS
     else:
         kind = "next_up" if "next_title" in params else "message"
-
-    seconds = int(params.get("duration") or DEFAULT_SECONDS * 1000) / 1000
+        # fractional when the length comes from a background video (ffprobe)
+        seconds = float(params.get("duration") or DEFAULT_SECONDS * 1000) / 1000
     key = hashlib.sha1((kind + json.dumps(sorted(params.items()), ensure_ascii=False)).encode()).hexdigest()[:16]
     return RenderJob(kind, key, params, seconds, loop=filler, countdown=filler)
+
+
+def next_show_title(later_content_types, current_title, following_title):
+    # a break inside a show leads back into that show; only the last break leads to the next one
+    if any(kind not in ("bump", "commercial") for kind in later_content_types):
+        return current_title
+    return following_title
+
+
+def _field(entry, name):
+    return entry[name] if isinstance(entry, dict) else getattr(entry, name)
+
+
+def plan_jobs(plan, current_title, following_title):
+    """(index, job) for each autobump in a block's plan that can be rendered."""
+    for i, entry in enumerate(plan):
+        later = [_field(e, "content_type") for e in plan[i + 1:]]
+        try:
+            job = job_for(_field(entry, "path"), next_show_title(later, current_title, following_title))
+        except (ValueError, KeyError) as e:
+            logging.getLogger("BumpJobs").warning(f"Ignoring an autobump that can't be rendered: {e}")
+            job = None
+        if job:
+            yield i, job

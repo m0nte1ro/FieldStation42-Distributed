@@ -608,7 +608,8 @@ class StationPlayer:
                 # self.mpv.vf = "lavfi=[]"
                 self._l.info(f"playing {target}")
                 # open once at the offset instead of play-then-seek, so a tune costs one open
-                seek_to = offset_seconds if not is_stream and offset_seconds is not None and offset_seconds > 0 else None
+                # a looped clip (gap filler) starts from its top: the offset is into the gap, not the clip
+                seek_to = offset_seconds if not loop and not is_stream and offset_seconds is not None and offset_seconds > 0 else None
                 self.mpv.command("set", "start", str(seek_to) if seek_to else "none")
                 self.mpv.command("set", "loop-file", "inf" if loop else "no")
                 self.mpv.command("playlist-clear")
@@ -733,6 +734,7 @@ class StationPlayer:
         self.mpv.vf = ""
         self.mpv.af = ""
         self.mpv.command("set", "start", "none")
+        self.mpv.command("set", "loop-file", "no")
         self.mpv.command("playlist-clear")
         self.mpv.command("loadfile", self._media_target(file_path), "replace")
         self.mpv.loop_playlist = "inf"
@@ -778,6 +780,7 @@ class StationPlayer:
             self.current_playing_file_path = "playlist"
 
             self.mpv.command("set", "start", "none")
+            self.mpv.command("set", "loop-file", "no")
             self.mpv.command("playlist-clear")
 
             # Load files using loadfile with 'append' flag

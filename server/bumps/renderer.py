@@ -18,6 +18,8 @@ class AudioSource:
     path: str
     loop: bool
     volume: float
+    # background videos often have no sound; check before relying on it
+    probe: bool = False
 
 
 def _local(url, static_dir):
@@ -34,7 +36,7 @@ def audio_source(params, static_dir=STATIC_DIR):
     if params.get("bg_music"):
         return AudioSource(_local(params["bg_music"], static_dir), params.get("loopmusic") != "false", MUSIC_VOLUME)
     if params.get("bg_video") and params.get("bg_video_audio") != "false":
-        return AudioSource(_local(params["bg_video"], static_dir), False, 1.0)
+        return AudioSource(_local(params["bg_video"], static_dir), False, 1.0, probe=True)
     return None
 
 
@@ -49,11 +51,23 @@ def ffmpeg_command(recording, trim, job, audio, out):
             # pad with the last frame and silence, then -t cuts every clip to exactly its length
             "-vf", f"scale={WIDTH}:{HEIGHT},fps={FPS},tpad=stop_mode=clone:stop_duration={job.seconds:.3f},format=yuv420p"]
     if audio:
-        fade_start = max(job.seconds - FADE_SECONDS, 0)
-        cmd += ["-filter:a", f"apad,volume={audio.volume},afade=t=out:st={fade_start:.3f}:d={FADE_SECONDS}"]
+        audio_filter = f"apad,volume={audio.volume}"
+        if not job.loop:
+            # loops play back to back, so only a one-off bump fades out
+            audio_filter += f",afade=t=out:st={max(job.seconds - FADE_SECONDS, 0):.3f}:d={FADE_SECONDS}"
+        cmd += ["-filter:a", audio_filter]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
             "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-movflags", "+faststart", out]
     return cmd
+
+
+def has_audio(path, run=subprocess.run):
+    try:
+        probe = run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+                     "-of", "csv=p=0", path], capture_output=True, text=True)
+    except Exception:
+        return False
+    return bool((probe.stdout or "").strip())
 
 
 def record_page(url, seconds, workdir):
@@ -83,8 +97,11 @@ def render(job, base_url, run=subprocess.run, record=record_page):
     partial = f"{job.path}.tmp.mp4"
     with tempfile.TemporaryDirectory() as workdir:
         recording, trim = record(url, job.seconds, workdir)
+        audio = audio_source(job.params)
+        if audio and audio.probe and not has_audio(audio.path, run):
+            audio = None
         try:
-            run(ffmpeg_command(recording, trim, job, audio_source(job.params), partial), check=True, capture_output=True)
+            run(ffmpeg_command(recording, trim, job, audio, partial), check=True, capture_output=True)
             os.replace(partial, job.path)
         finally:
             if os.path.exists(partial):

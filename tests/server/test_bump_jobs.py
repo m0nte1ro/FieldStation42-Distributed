@@ -2,6 +2,8 @@ import sys
 from unittest.mock import MagicMock
 from urllib.parse import urlencode
 
+import pytest
+
 sys.modules.setdefault("ffmpeg", MagicMock())
 sys.modules.setdefault("moviepy", MagicMock())
 sys.modules.setdefault("moviepy.editor", MagicMock())
@@ -52,10 +54,29 @@ def test_filler_job_is_a_30s_loop_with_countdown():
     short = job_for(bump(next_network="Panda", countdown="true", duration="133000"), "Bluey")
     long = job_for(bump(next_network="Panda", countdown="true", duration="2400000"), "Bluey")
     assert (short.kind, short.seconds, short.loop, short.countdown) == ("filler", 30.0, True, True)
-    assert short.params["countdown"] == "false" and short.params["duration"] == "30000"
+    assert short.params["countdown"] == "false" and short.params["duration"] == "0"  # no fade-out at the loop point
     assert short.key == long.key  # one loop whatever the gap
 
 
 def test_non_autobump_paths_have_no_job():
     assert job_for("catalog/toons/a.mp4", "Bluey") is None
     assert job_for("https://example.com/live.m3u8", None) is None
+
+
+def test_fractional_durations_are_fine():
+    # bg_video bumps get their length from ffprobe, e.g. 12345.678 ms
+    job = job_for(bump(duration="12345.678"))
+    assert job.seconds == pytest.approx(12.345678)
+
+
+def test_filler_page_never_fades_out_between_loops():
+    job = job_for(bump(next_network="Panda", countdown="true", duration="133000"), "Bluey")
+    assert job.params["duration"] == "0" and job.seconds == 30.0
+
+
+def test_next_show_is_the_current_one_when_it_resumes_after_the_break():
+    from server.bumps.jobs import next_show_title
+
+    assert next_show_title(["commercial", "bump", "feature"], "Bluey", "Peppa") == "Bluey"
+    assert next_show_title(["commercial", "bump"], "Bluey", "Peppa") == "Peppa"
+    assert next_show_title([], "Bluey", None) is None

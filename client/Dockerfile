@@ -2,7 +2,8 @@
 # Built from the repo root; client/Dockerfile.dockerignore keeps server/ out of the build context,
 # so the image holds only client/ and shared/. It draws on the host's X11 display and plays
 # through the host's PulseAudio/PipeWire (see client/compose.yml).
-FROM debian:bookworm-slim
+# Trixie (glibc 2.41): PySide6-Essentials 6.8+ for arm64 needs glibc 2.39, more than bookworm has.
+FROM debian:trixie-slim
 
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1
 
