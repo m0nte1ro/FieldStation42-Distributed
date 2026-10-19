@@ -190,3 +190,6 @@ web_urls/
 client.json
 # default media folder for the server container
 /media/
+
+# this machine's own client compose settings (e.g. WSL GPU), picked up by fs42
+client/compose.override.yml

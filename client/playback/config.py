@@ -21,6 +21,8 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config.setdefault("local_api_port", None)
     # web channels and live autobumps need a browser (QtWebEngine); off unless the client has it
     config.setdefault("web_pages", False)
+    # mpv's hardware decoding: auto-safe uses the GPU wherever that is known to work, else the CPU
+    config.setdefault("hwdec", "auto-safe")
     return config
 
 

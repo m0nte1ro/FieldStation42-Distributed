@@ -7,7 +7,10 @@
 # Install once, from the repository: ln -s "$PWD/client/platform/fs42" ~/.local/bin/fs42
 set -euo pipefail
 self="$(readlink -f "$0")"
-compose=(docker compose -f "$(cd "$(dirname "$self")/.." && pwd)/compose.yml")
+client="$(cd "$(dirname "$self")/.." && pwd)"
+compose=(docker compose -f "$client/compose.yml")
+# this machine's own settings (e.g. WSL's GPU), kept out of git
+if [ -f "$client/compose.override.yml" ]; then compose+=(-f "$client/compose.override.yml"); fi
 
 case "${1:-}" in
   start)

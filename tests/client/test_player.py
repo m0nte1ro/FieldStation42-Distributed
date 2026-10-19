@@ -268,3 +268,17 @@ def test_fs42_window_starts_mpv_in_a_window(player, monkeypatch):
         StationPlayer(dict(TOONS), lambda: None)
     kwargs = mpv.call_args.kwargs
     assert (kwargs["fs"], kwargs["geometry"], kwargs["border"]) == (False, "960x540+0+0", False)
+
+
+def test_the_player_decodes_in_hardware_when_it_can(player):
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert mpv.call_args.kwargs["hwdec"] == "auto-safe"
+
+
+def test_a_client_can_pick_its_hardware_decoder(player, tmp_path):
+    # e.g. a Raspberry Pi 4 decodes H.264 through v4l2m2m, which auto-safe may pass over
+    (tmp_path / "client.json").write_text(json.dumps({"server_url": "http://homelab:4242", "hwdec": "v4l2m2m-copy"}))
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert mpv.call_args.kwargs["hwdec"] == "v4l2m2m-copy"

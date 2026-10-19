@@ -24,6 +24,12 @@ RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tm
     && apt-get purge -y gcc python3-dev && apt-get autoremove -y
 ENV PATH="/opt/venv/bin:$PATH"
 
+# VA-API drivers let mpv decode on the GPU (AMD and Intel; a Raspberry Pi decodes through V4L2 instead)
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends mesa-va-drivers \
+    && if [ "$TARGETARCH" = "amd64" ]; then apt-get install -y --no-install-recommends intel-media-va-driver i965-va-driver; fi \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY shared shared
 COPY client client
