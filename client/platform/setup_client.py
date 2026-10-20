@@ -9,17 +9,25 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-from client.playback.config import LOOKS, OSD_STYLES  # noqa: E402
+from client.playback.config import LOOKS, OSD_STYLES, RESOLUTIONS  # noqa: E402
 
 DESCRIPTIONS = {
     "original": "the picture as it is",
     "broadcast": "light scanlines and softness, like a 90s broadcast",
     "crt": "a curved CRT tube with a phosphor grille (the heaviest on the GPU)",
+    "native": "every file at its own resolution",
+    "576": "at most 576 lines, like PAL TV: shows and cartoons look alike",
+    "480": "at most 480 lines, like NTSC TV: softer still",
     "vcr": "green terminal text, like a VCR menu",
     "cable": "a dark box with channel, name and programme, like a 90s cable box",
     "kids": "round and colourful, like a kids' channel",
 }
-QUESTIONS = [("look", "Picture look", LOOKS, "broadcast"), ("osd_style", "On-screen display", OSD_STYLES, "vcr")]
+# the default may depend on earlier answers: the retro looks suggest PAL's 576 lines, original none
+QUESTIONS = [
+    ("look", "Picture look", LOOKS, lambda config: "broadcast"),
+    ("resolution", "Resolution ceiling", RESOLUTIONS, lambda config: "native" if config["look"] == "original" else "576"),
+    ("osd_style", "On-screen display", OSD_STYLES, lambda config: "vcr"),
+]
 
 
 def _choose(title, options, current, input, print):
@@ -48,7 +56,7 @@ def setup(path, input=input, print=print, web_pages=None):
             config["server_url"] = answer.rstrip("/")
             break
     for key, title, options, default in QUESTIONS:
-        config[key] = _choose(title, options, config.get(key, default), input, print)
+        config[key] = _choose(title, options, config.get(key, default(config)), input, print)
     if web_pages is not None:
         config["web_pages"] = web_pages
     config.setdefault("media", {"method": "http"})

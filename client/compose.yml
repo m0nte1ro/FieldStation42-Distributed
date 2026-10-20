@@ -18,6 +18,8 @@ x-client: &client
     - FS42_LOOK=${FS42_LOOK:-}
     # vcr, cable or kids (fs42 start --osd); empty: client.json's osd_style, else vcr
     - FS42_OSD=${FS42_OSD:-}
+    # native, 576 or 480 (fs42 start --resolution); empty: client.json's, else 576 for the retro looks
+    - FS42_RESOLUTION=${FS42_RESOLUTION:-}
     # the OSD's frames, which mpv draws over the video (same path in both containers)
     - FS42_OSD_FILE=/run/fs42-osd/osd.bgra
   volumes:

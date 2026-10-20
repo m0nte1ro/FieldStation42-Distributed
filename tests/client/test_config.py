@@ -16,7 +16,7 @@ def test_load_client_config_applies_defaults_and_strips_slash(tmp_path):
     config = load_client_config(_write(tmp_path, {"server_url": "http://homelab:4242/"}))
     assert config == {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {},
                       "local_api_port": None, "web_pages": False, "hwdec": "auto-safe", "look": "broadcast",
-                      "osd_style": "vcr"}
+                      "resolution": "576", "osd_style": "vcr"}
 
 
 def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
@@ -24,7 +24,7 @@ def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
             "main_config": {"start_channel": 3}}
     assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False,
                                                                  hwdec="auto-safe", look="broadcast",
-                                                                 osd_style="vcr")
+                                                                 resolution="576", osd_style="vcr")
 
 
 def test_load_client_config_without_server_url_raises(tmp_path):
@@ -124,3 +124,22 @@ def test_an_unknown_osd_style_says_which_exist(tmp_path, monkeypatch):
     monkeypatch.delenv("FS42_OSD", raising=False)
     with pytest.raises(SystemExit, match="vcr, cable, kids"):
         load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "osd_style": "neon"}))
+
+
+@pytest.mark.parametrize("look, ceiling", [("original", "native"), ("broadcast", "576"), ("crt", "576")])
+def test_the_resolution_ceiling_follows_the_look_unless_chosen(tmp_path, monkeypatch, look, ceiling):
+    for var in ("FS42_LOOK", "FS42_RESOLUTION"):
+        monkeypatch.delenv(var, raising=False)
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h", "look": look}))["resolution"] == ceiling
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h", "look": look, "resolution": "480"}))["resolution"] == "480"
+
+
+def test_fs42_start_resolution_wins(tmp_path, monkeypatch):
+    monkeypatch.setenv("FS42_RESOLUTION", "native")
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h", "resolution": "480"}))["resolution"] == "native"
+
+
+def test_an_unknown_resolution_says_which_exist(tmp_path, monkeypatch):
+    monkeypatch.delenv("FS42_RESOLUTION", raising=False)
+    with pytest.raises(SystemExit, match="native, 576, 480"):
+        load_client_config(_write(tmp_path, {"server_url": "http://h", "resolution": "1080"}))

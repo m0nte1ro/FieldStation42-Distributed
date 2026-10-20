@@ -2,7 +2,7 @@
 //!BIND HOOKED
 //!DESC FS42 look: CRT fantasy
 
-#define LINES 480.0
+#define LINES 576.0
 #define SCAN 0.45
 #define MASK 0.22       // aperture grille strength
 #define BLOOM 0.30

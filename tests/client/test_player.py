@@ -287,16 +287,32 @@ def test_a_client_can_pick_its_hardware_decoder(player, tmp_path):
 @pytest.mark.parametrize("look", ["broadcast", "crt"])
 def test_the_look_is_a_shader_mpv_runs_on_the_gpu(player, tmp_path, monkeypatch, look):
     monkeypatch.setenv("FS42_LOOK", look)
+    monkeypatch.setenv("FS42_RESOLUTION", "native")
     with patch.object(station_player, "MPV") as mpv:
         StationPlayer(dict(TOONS), lambda: None)
-    shader = mpv.call_args.kwargs["glsl_shaders"]
+    [shader] = mpv.call_args.kwargs["glsl_shaders_append"]
     assert shader.endswith(f"client/playback/looks/{look}.glsl")
     with open(shader) as f:
         assert f.readline().startswith("//!HOOK")
 
 
-def test_the_original_look_runs_no_shader(player, monkeypatch):
-    monkeypatch.setenv("FS42_LOOK", "original")
+@pytest.mark.parametrize("ceiling", ["576", "480"])
+def test_the_ceiling_shrinks_the_picture_before_the_look(player, monkeypatch, ceiling):
+    # the ceiling works on the video's own pixels (MAIN), the look on the screen's (OUTPUT)
+    monkeypatch.setenv("FS42_LOOK", "broadcast")
+    monkeypatch.setenv("FS42_RESOLUTION", ceiling)
     with patch.object(station_player, "MPV") as mpv:
         StationPlayer(dict(TOONS), lambda: None)
-    assert "glsl_shaders" not in mpv.call_args.kwargs
+    first, second = mpv.call_args.kwargs["glsl_shaders_append"]
+    assert first.endswith(f"looks/ceiling-{ceiling}.glsl") and second.endswith("looks/broadcast.glsl")
+    with open(first) as f:
+        text = f.read()
+    assert "//!HOOK MAIN" in text and f"//!HEIGHT {ceiling}" in text
+
+
+def test_the_original_look_runs_no_shader(player, monkeypatch):
+    monkeypatch.setenv("FS42_LOOK", "original")
+    monkeypatch.delenv("FS42_RESOLUTION", raising=False)
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert "glsl_shaders_append" not in mpv.call_args.kwargs

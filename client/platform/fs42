@@ -4,6 +4,7 @@
 #   fs42 start --windowed [WxH]   in a window at the screen's top-left corner (default 1280x720)
 #   fs42 start --look LOOK        original, broadcast or crt, for this run (else client.json's)
 #   fs42 start --osd STYLE        vcr, cable or kids, for this run (else client.json's)
+#   fs42 start --resolution N     native, 576 or 480 lines at most, for this run (else client.json's)
 #   fs42 setup                    choose the server, look and OSD style, saved in client/client.json
 #   fs42 kill                     stop it (the player and its OSD)
 #   fs42 logs                     follow the player's log
@@ -17,7 +18,7 @@ if [ -f "$client/compose.override.yml" ]; then compose+=(-f "$client/compose.ove
 
 case "${1:-}" in
   start)
-    FS42_WINDOW="" FS42_LOOK="" FS42_OSD=""
+    FS42_WINDOW="" FS42_LOOK="" FS42_OSD="" FS42_RESOLUTION=""
     shift
     while [ $# -gt 0 ]; do
       case "$1" in
@@ -27,11 +28,12 @@ case "${1:-}" in
           ;;
         --look) FS42_LOOK="${2:-}"; shift ;;
         --osd) FS42_OSD="${2:-}"; shift ;;
-        *) echo "fs42 start: unknown option $1" >&2; sed -n '2,9p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+        --resolution) FS42_RESOLUTION="${2:-}"; shift ;;
+        *) echo "fs42 start: unknown option $1" >&2; sed -n '2,10p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
       esac
       shift
     done
-    export FS42_WINDOW FS42_LOOK FS42_OSD
+    export FS42_WINDOW FS42_LOOK FS42_OSD FS42_RESOLUTION
     # X11 desktops: let the containers draw (WSLg doesn't need it)
     if command -v xhost >/dev/null && [ -n "${DISPLAY:-}" ]; then xhost +local:docker >/dev/null || true; fi
     "${compose[@]}" up -d
@@ -39,5 +41,5 @@ case "${1:-}" in
   setup) python3 "$client/platform/setup_client.py" "$client/client.json" ;;
   kill) "${compose[@]}" down ;;
   logs) "${compose[@]}" logs -f --since 5m client ;;
-  *) sed -n '2,9p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '2,10p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

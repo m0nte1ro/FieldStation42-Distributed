@@ -2,7 +2,7 @@
 //!BIND HOOKED
 //!DESC FS42 look: retro broadcast
 
-#define LINES 540.0     // scanlines over the picture's height
+#define LINES 576.0     // scanlines over the picture's height
 #define SCAN 0.22       // how dark the gaps between lines are
 #define BLOOM 0.18
 #define BLEED 0.45      // red/blue smear to the side, like composite video
