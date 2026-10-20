@@ -197,3 +197,17 @@ def test_the_rundown_asks_for_bumps_in_this_clients_osd_style(server, tmp_path):
     _client(server, tmp_path, osd_style="cable").sync_rundown()
     [params] = [params for path, params in server.requests if path == "/client/rundown"]
     assert params["osd_style"] == "cable"
+
+
+def test_every_request_to_the_server_carries_the_access_token(server, tmp_path):
+    headers = {"CF-Access-Client-Id": "tv.access", "CF-Access-Client-Secret": "s3cret"}
+    seen = []
+    original = server.handle
+
+    def handle(request):
+        seen.append((request.headers.get("cf-access-client-id"), request.headers.get("cf-access-client-secret")))
+        return original(request)
+
+    server.handle = handle
+    _client(server, tmp_path, server_headers=headers).initial_sync()
+    assert seen and set(seen) == {("tv.access", "s3cret")}

@@ -43,6 +43,15 @@ def _choose(title, options, current, input, print):
         print(f"  Please answer a number from 1 to {len(options)}.")
 
 
+def _access_token(config, input, print):
+    current = config.get("server_headers", {}).get("CF-Access-Client-Id")
+    print("\nCloudflare Access service token - only when the server is reached through Cloudflare Access:")
+    client_id = input(f"Client ID (Enter {'keeps ' + current if current else 'skips'}): ").strip()
+    if client_id:
+        secret = input("Client Secret: ").strip()
+        config["server_headers"] = {"CF-Access-Client-Id": client_id, "CF-Access-Client-Secret": secret}
+
+
 def setup(path, input=input, print=print, web_pages=None):
     config = {}
     if os.path.exists(path) and not os.path.isdir(path):
@@ -57,6 +66,7 @@ def setup(path, input=input, print=print, web_pages=None):
             break
     for key, title, options, default in QUESTIONS:
         config[key] = _choose(title, options, config.get(key, default(config)), input, print)
+    _access_token(config, input, print)
     if web_pages is not None:
         config["web_pages"] = web_pages
     config.setdefault("media", {"method": "http"})

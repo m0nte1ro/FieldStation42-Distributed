@@ -51,7 +51,7 @@ class ClientSync:
             return default
 
     def _get(self, url, **params):
-        response = self.client.get(url, params=params)
+        response = self.client.get(url, params=params, headers=self.config.get("server_headers") or None)
         response.raise_for_status()
         return response
 

@@ -11,7 +11,7 @@ HOP_BY_HOP = {
 METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
 
 
-def build_proxy_router(server_url, transport=None):
+def build_proxy_router(server_url, transport=None, headers=None):
     router = APIRouter()
     client = httpx.AsyncClient(
         base_url=server_url, transport=transport, follow_redirects=False, timeout=httpx.Timeout(10, read=None)
@@ -24,8 +24,12 @@ def build_proxy_router(server_url, transport=None):
         query = request.scope.get("query_string", b"").decode("latin-1")
         if query:
             target = f"{target}?{query}"
-        headers = [(k, v) for k, v in request.headers.raw if k.decode("latin-1").lower() not in HOP_BY_HOP | {"host"}]
-        upstream_request = client.build_request(request.method, target, headers=headers, content=await request.body())
+        # the client's own headers for the server (e.g. its Cloudflare Access token) replace any a browser sent
+        ours = {name.lower() for name in (headers or {})}
+        forwarded = [(k, v) for k, v in request.headers.raw
+                     if k.decode("latin-1").lower() not in HOP_BY_HOP | {"host"} | ours]
+        forwarded += [(k.encode("latin-1"), v.encode("latin-1")) for k, v in (headers or {}).items()]
+        upstream_request = client.build_request(request.method, target, headers=forwarded, content=await request.body())
         try:
             upstream = await client.send(upstream_request, stream=True)
         except httpx.HTTPError:

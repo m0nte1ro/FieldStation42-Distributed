@@ -30,6 +30,12 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config.setdefault("web_pages", False)
     # mpv's hardware decoding: auto-safe uses the GPU wherever that is known to work, else the CPU
     config.setdefault("hwdec", "auto-safe")
+    # sent with every request to the server, e.g. a Cloudflare Access service token
+    # ({"CF-Access-Client-Id": ..., "CF-Access-Client-Secret": ...})
+    config.setdefault("server_headers", {})
+    headers = config["server_headers"]
+    if not isinstance(headers, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in headers.items()):
+        raise SystemExit(f"server_headers in {path} must map header names to values")
     # fs42 start --look wins over client.json
     config["look"] = os.environ.get("FS42_LOOK") or config.get("look", "broadcast")
     if config["look"] not in LOOKS:

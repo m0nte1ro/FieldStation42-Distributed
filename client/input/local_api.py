@@ -34,10 +34,11 @@ async def _lifespan(app):
     yield
 
 
-def build_app(server_url):
+def build_app(server_url, headers=None):
     app = FastAPI(title="FieldStation42 client", lifespan=_lifespan)
     app.state.player_command_queue = None
-    for router in (player_router, ppv_router, build_proxy_router(server_url)):
+    proxy_router = build_proxy_router(server_url, headers=headers) if headers else build_proxy_router(server_url)
+    for router in (player_router, ppv_router, proxy_router):
         app.include_router(router)
     return app
 
@@ -52,7 +53,7 @@ def run(shutdown_queue, command_queue):
     logging.getLogger("uvicorn.access").addFilter(PlayerStatusFilter())
     _shutdown_queue = shutdown_queue
     config = load_client_config()
-    app = build_app(config["server_url"])
+    app = build_app(config["server_url"], config["server_headers"])
     app.state.player_command_queue = command_queue
     conf = StationManager().server_conf
     port = config["local_api_port"] or conf["server_port"]
