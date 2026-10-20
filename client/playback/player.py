@@ -40,6 +40,15 @@ from shared.stations.manager import StationManager
 from shared.stations.slot_reader import SlotReader
 from client.playback import rundown_store
 from client.platform.window import mpv_window_options, window_size
+
+
+LOOKS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "looks")
+
+
+def mpv_look_options(look):
+    # the shader runs on the GPU at display time; the files themselves are never touched
+    return {} if look == "original" else {"glsl_shaders": os.path.join(LOOKS_DIR, f"{look}.glsl")}
+
 from client.playback.config import load_client_config
 from client.playback.media import local_page_url, media_location
 from client.playback.sync import refresh_requested
@@ -197,6 +206,7 @@ class StationPlayer:
                 input_default_bindings=False,
                 **mpv_window_options(window_size()),
                 hwdec=self.client_config["hwdec"],
+                **mpv_look_options(self.client_config["look"]),
                 idle=True,
                 force_window=True,
                 script_opts="osc-idlescreen=no",

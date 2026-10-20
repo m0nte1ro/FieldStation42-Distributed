@@ -2,6 +2,8 @@ import json
 import os
 
 CLIENT_CONFIG_PATH = "client.json"
+# how the picture looks: a GPU shader mpv runs over every frame (client/playback/looks/<look>.glsl)
+LOOKS = ("original", "broadcast", "crt")
 
 
 def load_client_config(path=CLIENT_CONFIG_PATH):
@@ -23,6 +25,10 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config.setdefault("web_pages", False)
     # mpv's hardware decoding: auto-safe uses the GPU wherever that is known to work, else the CPU
     config.setdefault("hwdec", "auto-safe")
+    # fs42 start --look wins over client.json
+    config["look"] = os.environ.get("FS42_LOOK") or config.get("look", "broadcast")
+    if config["look"] not in LOOKS:
+        raise SystemExit(f"look must be one of {', '.join(LOOKS)}, not {config['look']!r}")
     return config
 
 

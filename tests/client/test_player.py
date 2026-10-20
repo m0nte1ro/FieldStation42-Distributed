@@ -282,3 +282,21 @@ def test_a_client_can_pick_its_hardware_decoder(player, tmp_path):
     with patch.object(station_player, "MPV") as mpv:
         StationPlayer(dict(TOONS), lambda: None)
     assert mpv.call_args.kwargs["hwdec"] == "v4l2m2m-copy"
+
+
+@pytest.mark.parametrize("look", ["broadcast", "crt"])
+def test_the_look_is_a_shader_mpv_runs_on_the_gpu(player, tmp_path, monkeypatch, look):
+    monkeypatch.setenv("FS42_LOOK", look)
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    shader = mpv.call_args.kwargs["glsl_shaders"]
+    assert shader.endswith(f"client/playback/looks/{look}.glsl")
+    with open(shader) as f:
+        assert f.readline().startswith("//!HOOK")
+
+
+def test_the_original_look_runs_no_shader(player, monkeypatch):
+    monkeypatch.setenv("FS42_LOOK", "original")
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert "glsl_shaders" not in mpv.call_args.kwargs
