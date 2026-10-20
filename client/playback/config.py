@@ -4,6 +4,8 @@ import os
 CLIENT_CONFIG_PATH = "client.json"
 # how the picture looks: a GPU shader mpv runs over every frame (client/playback/looks/<look>.glsl)
 LOOKS = ("original", "broadcast", "crt")
+# how the OSD (channel, volume, mute) is drawn: client/osd/styles.py
+OSD_STYLES = ("vcr", "cable", "kids")
 
 
 def load_client_config(path=CLIENT_CONFIG_PATH):
@@ -29,6 +31,10 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config["look"] = os.environ.get("FS42_LOOK") or config.get("look", "broadcast")
     if config["look"] not in LOOKS:
         raise SystemExit(f"look must be one of {', '.join(LOOKS)}, not {config['look']!r}")
+    # fs42 start --osd wins over client.json
+    config["osd_style"] = os.environ.get("FS42_OSD") or config.get("osd_style", "vcr")
+    if config["osd_style"] not in OSD_STYLES:
+        raise SystemExit(f"osd_style must be one of {', '.join(OSD_STYLES)}, not {config['osd_style']!r}")
     return config
 
 
