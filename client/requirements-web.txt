@@ -1,2 +1,3 @@
-# optional: web channels and live autobumps (QtWebEngine, i.e. a Chromium) - set "web_pages": true too
-PySide6-Addons>=6.8
+# optional: web channels and live autobumps (QtWebEngine, i.e. a Chromium) - set "web_pages": true too.
+# Since PySide6 6.12 QtWebEngine has its own package (it pulls PySide6-Addons)
+PySide6-WebEngine>=6.12

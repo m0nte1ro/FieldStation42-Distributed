@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG WEB_PAGES=false
 COPY client/requirements.txt client/requirements-web.txt /tmp/
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
-    && if [ "$WEB_PAGES" = "true" ]; then /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-web.txt; fi \
+    && if [ "$WEB_PAGES" = "true" ]; then \
+         apt-get update && apt-get install -y --no-install-recommends libxkbfile1 && rm -rf /var/lib/apt/lists/* \
+         && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-web.txt; fi \
     && apt-get purge -y gcc python3-dev && apt-get autoremove -y
 ENV PATH="/opt/venv/bin:$PATH"
 

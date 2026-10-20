@@ -28,7 +28,8 @@ done < client/requirements.txt
 web_pages=false
 read -p "Enable web channels and live autobumps? Installs a browser engine (~300 MB). (y/N): " web
 if [[ "$web" =~ ^[Yy]$ ]]; then
-  pip install -r client/requirements-web.txt && web_pages=true
+  # QtWebEngine also needs this system library
+  sudo apt-get install -y libxkbfile1 && pip install -r client/requirements-web.txt && web_pages=true
 fi
 
 mkdir -p runtime confs catalog

@@ -149,3 +149,10 @@ def test_server_headers_must_be_names_and_values(tmp_path):
     assert load_client_config(_write(tmp_path, {"server_url": "http://h"}))["server_headers"] == {}
     with pytest.raises(SystemExit, match="server_headers"):
         load_client_config(_write(tmp_path, {"server_url": "http://h", "server_headers": ["CF-Access-Client-Id"]}))
+
+
+def test_the_web_extra_installs_qtwebengine():
+    # PySide6 6.12 moved QtWebEngine out of PySide6-Addons into its own package
+    from pathlib import Path
+    requirements = (Path(__file__).parents[2] / "client/requirements-web.txt").read_text()
+    assert "PySide6-WebEngine" in requirements
