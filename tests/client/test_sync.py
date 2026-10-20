@@ -65,8 +65,8 @@ def server():
     refresh_requested.clear()
 
 
-def _client(server, root, main_config=None):
-    config = {"server_url": SERVER, "media": {"method": "http"}, "main_config": main_config or {}}
+def _client(server, root, main_config=None, **extra):
+    config = {"server_url": SERVER, "media": {"method": "http"}, "main_config": main_config or {}, **extra}
     client = httpx.Client(base_url=SERVER, transport=httpx.MockTransport(server.handle))
     return ClientSync(config, root=str(root), client=client)
 
@@ -191,3 +191,9 @@ def test_poll_survives_an_unexpected_server_reply(server, tmp_path):
 
     client.client = httpx.Client(base_url=SERVER, transport=httpx.MockTransport(odd))
     assert client.poll_once() is False
+
+
+def test_the_rundown_asks_for_bumps_in_this_clients_osd_style(server, tmp_path):
+    _client(server, tmp_path, osd_style="cable").sync_rundown()
+    [params] = [params for path, params in server.requests if path == "/client/rundown"]
+    assert params["osd_style"] == "cable"

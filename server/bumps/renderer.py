@@ -70,7 +70,11 @@ def has_audio(path, run=subprocess.run):
     return bool((probe.stdout or "").strip())
 
 
-def record_page(url, seconds, workdir):
+# settled: the fonts are in and the entrance animations (fadeInUp) have finished
+SETTLED_JS = "Promise.all([document.fonts.ready, ...document.getAnimations().map(a => a.finished)])"
+
+
+def record_page(url, seconds, workdir, settle=False):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
@@ -81,7 +85,10 @@ def record_page(url, seconds, workdir):
         started = time.monotonic()
         page = context.new_page()
         page.goto(url, wait_until="load")
-        # the recording starts with the blank page; ffmpeg trims everything before the load
+        if settle:
+            # a loop starts from the finished page, or every pass would replay the entrance
+            page.evaluate(SETTLED_JS)
+        # the recording starts with the blank page; ffmpeg trims everything before this point
         trim = time.monotonic() - started
         page.wait_for_timeout(seconds * 1000 + 300)
         video = page.video
@@ -96,7 +103,7 @@ def render(job, base_url, run=subprocess.run, record=record_page):
     os.makedirs(BUMP_DIR, exist_ok=True)
     partial = f"{job.path}.tmp.mp4"
     with tempfile.TemporaryDirectory() as workdir:
-        recording, trim = record(url, job.seconds, workdir)
+        recording, trim = record(url, job.seconds, workdir, settle=True) if job.loop else record(url, job.seconds, workdir)
         audio = audio_source(job.params)
         if audio and audio.probe and not has_audio(audio.path, run):
             audio = None

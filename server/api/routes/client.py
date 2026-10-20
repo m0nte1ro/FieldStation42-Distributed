@@ -11,6 +11,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from server.api.rundown_export import build_rundown
+from server.bumps.keeper import request_bump_scan
+from server.bumps.styles import STYLES, note_style
 from server.bumps.jobs import BUMP_DIR
 from server.scheduler.liquid_manager import LiquidManager
 from server.catalog.media_processor import MediaProcessor
@@ -146,9 +148,13 @@ def get_version():
 
 
 @router.get("/rundown")
-def get_rundown(hours: int = 24):
+def get_rundown(hours: int = 24, osd_style: str | None = None):
     manager, _, version = _state()
-    rundown = build_rundown(manager.stations, datetime.datetime.now(), hours)
+    # bumps in the look of the client's OSD style; an unknown style gets the station's own
+    style = osd_style if osd_style in STYLES else None
+    if note_style(style):
+        request_bump_scan()  # a style no client used before: start rendering it now
+    rundown = build_rundown(manager.stations, datetime.datetime.now(), hours, style)
     rundown["version"] = version
     return rundown
 

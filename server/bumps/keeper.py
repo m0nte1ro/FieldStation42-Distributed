@@ -6,6 +6,7 @@ import time
 
 from server.bumps.jobs import plan_jobs
 from server.bumps.renderer import render as render_job
+from server.bumps.styles import styles_in_use
 from server.scheduler.liquid_io import LiquidIO
 from shared.stations.manager import StationManager
 
@@ -17,7 +18,7 @@ _wake = threading.Event()
 _keeper_running = False
 
 
-def pending_jobs(stations, now, hours=24):
+def pending_jobs(stations, now, hours=24, styles=(None,)):
     end = now + datetime.timedelta(hours=hours)
     liquid = LiquidIO()
     jobs = {}
@@ -27,9 +28,10 @@ def pending_jobs(stations, now, hours=24):
         blocks = liquid.query_liquid_blocks(station["network_name"], str(now), str(end))
         for i, block in enumerate(blocks):
             following = blocks[i + 1].title if i + 1 < len(blocks) else None
-            for _, job in plan_jobs(block.plan, block.title, following):
-                if job.key not in jobs and not os.path.exists(job.path):
-                    jobs[job.key] = job
+            for style in styles:
+                for _, job in plan_jobs(block.plan, block.title, following, style):
+                    if job.key not in jobs and not os.path.exists(job.path):
+                        jobs[job.key] = job
     return list(jobs.values())
 
 
@@ -41,7 +43,7 @@ def scan_once(stations, render=_render_here, now=None):
     # one scan at a time, so a job is never rendered twice
     with _scan_lock:
         rendered = 0
-        for job in pending_jobs(stations, now or datetime.datetime.now()):
+        for job in pending_jobs(stations, now or datetime.datetime.now(), styles=styles_in_use()):
             try:
                 render(job)
                 rendered += 1

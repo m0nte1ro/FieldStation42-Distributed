@@ -342,3 +342,18 @@ def test_no_report_when_no_look_is_asked_for(player, monkeypatch, caplog):
     with caplog.at_level("WARNING"):
         p.play_file("catalog/a.mp4", file_duration=600, offset_seconds=0)
     assert not [r for r in caplog.records if "ignores shaders" in r.getMessage()]
+
+
+
+@pytest.mark.parametrize("style, font, color, border", [
+    ("vcr", "VT323", "#39FF14", "#000000"), ("cable", "Michroma", "#FFFFFF", "#0A0E1C"),
+    ("kids", "Fredoka", "#FFFFFF", "#1E2878")])
+def test_the_countdown_mpv_draws_is_in_the_osd_style(player, monkeypatch, style, font, color, border):
+    monkeypatch.setenv("FS42_OSD", style)
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    kwargs = mpv.call_args.kwargs
+    assert (kwargs["osd_font"], kwargs["osd_color"], kwargs["osd_border_color"]) == (font, color, border)
+    assert kwargs["osd_fonts_dir"].endswith("client/osd/fonts")
+    # big, at the bottom, centred: readable across the room
+    assert (kwargs["osd_align_x"], kwargs["osd_align_y"]) == ("center", "bottom") and kwargs["osd_font_size"] >= 64

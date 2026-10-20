@@ -114,7 +114,8 @@ class StationBump {
 
     applyVariation() {
         // Remove any existing variation classes
-        this.container.classList.remove('variation-modern', 'variation-retro', 'variation-corporate', 'variation-terminal');
+        this.container.classList.remove('variation-modern', 'variation-retro', 'variation-corporate', 'variation-terminal',
+            'variation-vcr', 'variation-cable', 'variation-kids');
 
         // Add the selected variation class
         this.container.classList.add(`variation-${this.config.variation}`);
@@ -124,6 +125,9 @@ class StationBump {
             const variationDefaults = this.getVariationDefaults();
             if (variationDefaults.bgColor) {
                 this.container.style.background = variationDefaults.bgColor;
+            } else if (['vcr', 'cable', 'kids'].includes(this.config.variation)) {
+                // the FS42 styles' backgrounds are in bump.css: drop the inline default black
+                this.container.style.background = '';
             }
         }
     }
@@ -145,7 +149,11 @@ class StationBump {
             terminal: {
                 bgColor: '#000000',
                 fgColor: null
-            }
+            },
+            // FS42 styles, matching the client OSD styles: their backgrounds live in bump.css
+            vcr: { bgColor: null, fgColor: null },
+            cable: { bgColor: null, fgColor: null },
+            kids: { bgColor: null, fgColor: null }
         };
 
         return defaults[this.config.variation] || defaults.modern;

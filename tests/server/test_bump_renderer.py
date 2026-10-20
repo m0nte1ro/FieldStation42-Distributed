@@ -113,3 +113,18 @@ def test_background_video_without_sound_renders_with_silence(tmp_path, monkeypat
 
     render(job, "http://127.0.0.1:4242", run=run, record=_fake_record)
     assert "anullsrc=channel_layout=stereo:sample_rate=48000" in commands[-1]
+
+
+def test_a_loop_starts_once_the_page_has_settled(tmp_path, monkeypatch):
+    # a filler repeats every 30 s: starting on the page's entrance animation would replay it each time
+    monkeypatch.chdir(tmp_path)
+    settled = []
+
+    def record(url, seconds, workdir, settle=False):
+        settled.append(settle)
+        return _fake_record(url, seconds, workdir)
+
+    loop_job = RenderJob("filler", "loop2", {"duration": "0"}, 30.0, loop=True, countdown=True)
+    render(loop_job, "http://127.0.0.1:4242", run=_ffmpeg_writes_output, record=record)
+    render(JOB, "http://127.0.0.1:4242", run=_ffmpeg_writes_output, record=record)
+    assert settled == [True, False]

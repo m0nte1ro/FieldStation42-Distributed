@@ -32,10 +32,13 @@ def page_params(entry_path):
     return dict(parse_qsl(urlsplit(strip_autobump(entry_path)).query, keep_blank_values=True))
 
 
-def job_for(entry_path, next_title=None):
+def job_for(entry_path, next_title=None, style=None):
     if not is_autobump_url(entry_path):
         return None
     params = page_params(entry_path)
+    if style:
+        # rendered in the look of a client's OSD style instead of the station's own
+        params["variation"] = style
     filler = params.get("countdown") == "true"
 
     if params.get("next_network"):
@@ -70,12 +73,12 @@ def _field(entry, name):
     return entry[name] if isinstance(entry, dict) else getattr(entry, name)
 
 
-def plan_jobs(plan, current_title, following_title):
+def plan_jobs(plan, current_title, following_title, style=None):
     """(index, job) for each autobump in a block's plan that can be rendered."""
     for i, entry in enumerate(plan):
         later = [_field(e, "content_type") for e in plan[i + 1:]]
         try:
-            job = job_for(_field(entry, "path"), next_show_title(later, current_title, following_title))
+            job = job_for(_field(entry, "path"), next_show_title(later, current_title, following_title), style)
         except (ValueError, KeyError) as e:
             logging.getLogger("BumpJobs").warning(f"Ignoring an autobump that can't be rendered: {e}")
             job = None

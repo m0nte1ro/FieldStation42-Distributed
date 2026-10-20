@@ -57,7 +57,7 @@ Autobumps are the bumps FieldStation42 builds from a channel's `autobump` settin
 - every text comes from the channel's `autobump` settings, including the next-up line: `"next_up_text": "A seguir na {network}"` (default `"Coming up on {network}"`);
 - "Bluey s01e03" already counts as "Bluey" (`normalize_titles`, on by default), so it's one bump per show; `"normalize_titles": false` in `confs/main_config.json` keeps full episode titles, and with them one bump per episode.
 
-The server image carries the Chromium that renders them; clients don't need one.
+Each client gets its bumps in the look of its OSD style (`vcr`, `cable` or `kids`, with the same fonts and colours); the server renders only the styles clients have asked for in the last 30 days, plus the channel's own `variation` for clients that send none. The server image carries the Chromium that renders them; clients don't need one.
 
 ## Client
 
