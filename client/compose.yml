@@ -16,6 +16,8 @@ x-client: &client
     - FS42_WINDOW=${FS42_WINDOW:-}
     # original, broadcast or crt (fs42 start --look); empty: client.json's look, else broadcast
     - FS42_LOOK=${FS42_LOOK:-}
+    # vcr, cable or kids (fs42 start --osd); empty: client.json's osd_style, else vcr
+    - FS42_OSD=${FS42_OSD:-}
     # the OSD's frames, which mpv draws over the video (same path in both containers)
     - FS42_OSD_FILE=/run/fs42-osd/osd.bgra
   volumes:

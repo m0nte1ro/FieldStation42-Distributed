@@ -28,7 +28,7 @@ def run(tmp_path, client):
     calls = tmp_path / "calls"
     fake = tmp_path / "bin/docker"
     fake.parent.mkdir()
-    fake.write_text(f'#!/bin/sh\necho "$* | window=$FS42_WINDOW | pulse=$PULSE_SOCKET | look=$FS42_LOOK" >> {calls}\n')
+    fake.write_text(f'#!/bin/sh\necho "$* | window=$FS42_WINDOW | pulse=$PULSE_SOCKET | look=$FS42_LOOK | osd=$FS42_OSD" >> {calls}\n')
     fake.chmod(0o755)
     # called through a symlink, as from ~/.local/bin
     link = tmp_path / "bin/fs42"
@@ -45,12 +45,12 @@ def run(tmp_path, client):
 def test_start_runs_the_tv_fullscreen(run, client):
     result, calls = run("start")
     assert result.returncode == 0
-    assert calls == [f"compose -f {client}/compose.yml up -d | window= | pulse= | look="]
+    assert calls == [f"compose -f {client}/compose.yml up -d | window= | pulse= | look= | osd="]
 
 
 def test_start_windowed_plays_in_a_1280x720_window(run):
     _, calls = run("start", "--windowed")
-    assert calls[0].endswith("| window=1280x720 | pulse= | look=")
+    assert calls[0].endswith("| window=1280x720 | pulse= | look= | osd=")
 
 
 def test_start_windowed_takes_a_size(run):
@@ -60,7 +60,7 @@ def test_start_windowed_takes_a_size(run):
 
 def test_kill_stops_only_the_client(run, client):
     _, calls = run("kill")
-    assert calls == [f"compose -f {client}/compose.yml down | window= | pulse= | look="]
+    assert calls == [f"compose -f {client}/compose.yml down | window= | pulse= | look= | osd="]
 
 
 def test_sound_setting_from_the_environment_is_kept(run):
@@ -82,16 +82,28 @@ def test_a_local_override_file_is_added_when_present(run, client):
 
 def test_start_with_a_look(run):
     _, calls = run("start", "--look", "crt")
-    assert calls[0].endswith("| window= | pulse= | look=crt")
+    assert calls[0].endswith("| window= | pulse= | look=crt | osd=")
 
 
 def test_look_and_window_in_any_order(run):
     _, first = run("start", "--look", "original", "--windowed", "960x540")
-    assert first[0].endswith("| window=960x540 | pulse= | look=original")
+    assert first[0].endswith("| window=960x540 | pulse= | look=original | osd=")
     _, both = run("start", "--windowed", "--look", "broadcast")
-    assert both[1].endswith("| window=1280x720 | pulse= | look=broadcast")
+    assert both[1].endswith("| window=1280x720 | pulse= | look=broadcast | osd=")
 
 
 def test_an_unknown_start_option_is_refused(run):
     result, calls = run("start", "--loook", "crt")
     assert result.returncode != 0 and calls == []
+
+
+def test_start_with_an_osd_style(run):
+    _, calls = run("start", "--osd", "cable", "--look", "crt")
+    assert calls[0].endswith("| look=crt | osd=cable")
+
+
+def test_setup_asks_and_writes_client_json(tmp_path, client):
+    (client / "platform/setup_client.py").write_text("import sys; open(sys.argv[1], 'w').write('{}')\n")
+    result = subprocess.run([str(client / "platform/fs42"), "setup"], capture_output=True, text=True,
+                            env={"PATH": "/usr/bin:/bin"})
+    assert result.returncode == 0 and (client / "client.json").read_text() == "{}"

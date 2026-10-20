@@ -18,11 +18,12 @@ from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, fra
 from client.osd.logo_display import LogoDisplay, LogoDisplayConfig
 from client.playback.config import load_client_config, prepare_station_loading
 from client.osd.mpv_overlay import MpvOverlay
+from client.osd import styles
 
 SOCKET_FILE = "runtime/play_status.socket"
 VOLUME_SOCKET_FILE = "runtime/volume.socket"
 CONFIG_FILE_PATH = Path("client/osd/osd.json")
-# VT323: a CRT terminal face (SIL Open Font License, client/osd/fonts/OFL.txt)
+# VT323: a CRT terminal face (SIL Open Font License, client/osd/fonts/OFL-VT323.txt)
 DEFAULT_FONT = str(Path(__file__).parent / "fonts" / "VT323-Regular.ttf")
 
 _registered_font_families: dict[str, str] = {}
@@ -71,8 +72,10 @@ class StatusDisplayConfig(BaseModel):
 
 
 class StatusDisplay(object):
-    def __init__(self, config: StatusDisplayConfig):
+    def __init__(self, config: StatusDisplayConfig, style: str = "vcr"):
         self.config = config
+        # vcr: the configured text below; other styles are drawn by client/osd/styles.py
+        self.style = style
         self._font = resolve_font(self.config.font, self.config.font_size)
         self._string = ""
 
@@ -119,6 +122,9 @@ class StatusDisplay(object):
             return
         if not self._string:
             return
+        if self.style in styles.STATUS:
+            styles.STATUS[self.style](painter, screen_w, screen_h, self.last_status or {})
+            return
 
         painter.setFont(self._font)
         metrics = painter.fontMetrics()
@@ -161,8 +167,9 @@ VOLUME_BLOCKS = 25
 
 
 class VolumeDisplay(object):
-    def __init__(self, config: VolumeDisplayConfig):
+    def __init__(self, config: VolumeDisplayConfig, style: str = "vcr"):
         self.config = config
+        self.style = style
         self.volume = 0.0
         self.muted = False
         # Start hidden until we actually see a volume message.
@@ -214,10 +221,13 @@ class VolumeDisplay(object):
         self.check_volume()
 
     def draw(self, painter: QPainter, screen_w: float, screen_h: float):
+        if not self.muted and self.time_since_change >= self.config.display_time:
+            return
+        if self.style in styles.VOLUME:
+            styles.VOLUME[self.style](painter, screen_w, screen_h, self.volume, self.muted)
+            return
         if self.muted:
             self.draw_mute(painter, screen_w, screen_h)
-            return
-        if self.time_since_change >= self.config.display_time:
             return
 
         w = frac_to_size_px(self.config.width, screen_w)
@@ -283,7 +293,7 @@ class VolumeDisplay(object):
         painter.drawText(QPointF(x + size * 1.5, y + size * 0.85), "MUTE")
 
 
-def load_objects() -> list:
+def load_objects(style: str = "vcr") -> list:
     objects = []
 
     if CONFIG_FILE_PATH.exists():
@@ -295,7 +305,7 @@ def load_objects() -> list:
                 if obj["type"] == "StatusDisplay":
                     del obj["type"]
                     config = StatusDisplayConfig.model_validate(obj)
-                    objects.append(StatusDisplay(config))
+                    objects.append(StatusDisplay(config, style))
                 elif obj["type"] == "LogoDisplay":
                     del obj["type"]
                     config = LogoDisplayConfig.model_validate(obj)
@@ -304,19 +314,19 @@ def load_objects() -> list:
                     del obj["type"]
                     config_status = StatusDisplayConfig.model_validate(obj)
                     config_logo = LogoDisplayConfig.model_validate(obj)
-                    status_osd = StatusDisplay(config_status)
+                    status_osd = StatusDisplay(config_status, style)
                     status_logo = LogoDisplay(config_logo)
                     objects.append(status_logo)
                     objects.append(status_osd)
                 elif obj["type"] == "VolumeDisplay":
                     del obj["type"]
                     config = VolumeDisplayConfig.model_validate(obj)
-                    objects.append(VolumeDisplay(config))
+                    objects.append(VolumeDisplay(config, style))
                 else:
                     print(f"Unrecognized osd object type: {obj['type']}")
     else:
         config = StatusDisplayConfig()
-        objects.append(StatusDisplay(config))
+        objects.append(StatusDisplay(config, style))
 
     # Always show a volume meter unless one was explicitly configured. Match its
     # color to the first StatusDisplay so it blends with the rest of the OSD.
@@ -326,7 +336,7 @@ def load_objects() -> list:
             if isinstance(obj, StatusDisplay):
                 volume_config.color = obj.config.text_color
                 break
-        objects.append(VolumeDisplay(volume_config))
+        objects.append(VolumeDisplay(volume_config, style))
 
     return objects
 
@@ -389,10 +399,11 @@ class MpvOsd:
 
 
 def main():
-    prepare_station_loading(load_client_config())
+    config = load_client_config()
+    prepare_station_loading(config)
     # no window: Qt only draws into memory, so the OSD needs no X11 or Wayland
     app = QGuiApplication([sys.argv[0], "-platform", "offscreen"])
-    osd = MpvOsd(load_objects())  # noqa: F841 - its timer drives the OSD
+    osd = MpvOsd(load_objects(config["osd_style"]))  # noqa: F841 - its timer drives the OSD
     sys.exit(app.exec())
 
 

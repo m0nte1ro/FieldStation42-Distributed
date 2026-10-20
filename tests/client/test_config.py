@@ -15,14 +15,16 @@ def _write(tmp_path, data):
 def test_load_client_config_applies_defaults_and_strips_slash(tmp_path):
     config = load_client_config(_write(tmp_path, {"server_url": "http://homelab:4242/"}))
     assert config == {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {},
-                      "local_api_port": None, "web_pages": False, "hwdec": "auto-safe", "look": "broadcast"}
+                      "local_api_port": None, "web_pages": False, "hwdec": "auto-safe", "look": "broadcast",
+                      "osd_style": "vcr"}
 
 
 def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
     data = {"server_url": "http://h:4242", "media": {"method": "mount", "root": "/mnt/fs42"},
             "main_config": {"start_channel": 3}}
     assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False,
-                                                                 hwdec="auto-safe", look="broadcast")
+                                                                 hwdec="auto-safe", look="broadcast",
+                                                                 osd_style="vcr")
 
 
 def test_load_client_config_without_server_url_raises(tmp_path):
@@ -108,3 +110,17 @@ def test_an_unknown_look_says_which_exist(tmp_path, monkeypatch):
     monkeypatch.delenv("FS42_LOOK", raising=False)
     with pytest.raises(SystemExit, match="original, broadcast, crt"):
         load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "look": "vhs"}))
+
+
+def test_the_osd_style_is_vcr_unless_chosen(tmp_path, monkeypatch):
+    monkeypatch.delenv("FS42_OSD", raising=False)
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242"}))["osd_style"] == "vcr"
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "osd_style": "kids"}))["osd_style"] == "kids"
+    monkeypatch.setenv("FS42_OSD", "cable")
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "osd_style": "kids"}))["osd_style"] == "cable"
+
+
+def test_an_unknown_osd_style_says_which_exist(tmp_path, monkeypatch):
+    monkeypatch.delenv("FS42_OSD", raising=False)
+    with pytest.raises(SystemExit, match="vcr, cable, kids"):
+        load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "osd_style": "neon"}))

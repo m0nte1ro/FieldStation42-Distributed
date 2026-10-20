@@ -36,13 +36,8 @@ for f in static.mp4 standby.png brb.png off_air_pattern.mp4 signoff.mp4; do
   [ -e "runtime/$f" ] || cp "docs/$f" "runtime/$f"
 done
 
-if [ -f client.json ]; then
-  echo -e "${GREEN}Keeping the existing client.json${NC}"
-else
-  read -p "Server URL, e.g. http://homelab:4242: " server_url
-  FS42_SERVER_URL="$server_url" FS42_WEB="$web_pages" python3 -c 'import json, os; json.dump({"server_url": os.environ["FS42_SERVER_URL"], "media": {"method": "http"}, "main_config": {}, "web_pages": os.environ["FS42_WEB"] == "true"}, open("client.json", "w"), indent=2)'
-  echo -e "${GREEN}Wrote client.json${NC}"
-fi
+# the server, the picture's look and the OSD style; Enter keeps what an existing client.json has
+python3 client/platform/setup_client.py client.json "$web_pages"
 
 argon=false
 read -p "Argon ONE case with the Argon IR remote? (y/N): " argon_case
