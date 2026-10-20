@@ -2,6 +2,7 @@
 # fs42 - the Docker client on this PC:
 #   fs42 start                    the TV, fullscreen
 #   fs42 start --windowed [WxH]   in a window at the screen's top-left corner (default 1280x720)
+#   fs42 start --look LOOK        original, broadcast (the default) or crt; combines with --windowed
 #   fs42 kill                     stop it (the player and its OSD)
 #   fs42 logs                     follow the player's log
 # Install once, from the repository: ln -s "$PWD/client/platform/fs42" ~/.local/bin/fs42
@@ -14,14 +15,25 @@ if [ -f "$client/compose.override.yml" ]; then compose+=(-f "$client/compose.ove
 
 case "${1:-}" in
   start)
-    FS42_WINDOW=""
-    if [ "${2:-}" = "--windowed" ]; then FS42_WINDOW="${3:-1280x720}"; fi
-    export FS42_WINDOW
+    FS42_WINDOW="" FS42_LOOK=""
+    shift
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --windowed)
+          FS42_WINDOW=1280x720
+          if [[ "${2:-}" =~ ^[0-9]+x[0-9]+$ ]]; then FS42_WINDOW="$2"; shift; fi
+          ;;
+        --look) FS42_LOOK="${2:-}"; shift ;;
+        *) echo "fs42 start: unknown option $1" >&2; sed -n '2,7p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+      esac
+      shift
+    done
+    export FS42_WINDOW FS42_LOOK
     # X11 desktops: let the containers draw (WSLg doesn't need it)
     if command -v xhost >/dev/null && [ -n "${DISPLAY:-}" ]; then xhost +local:docker >/dev/null || true; fi
     "${compose[@]}" up -d
     ;;
   kill) "${compose[@]}" down ;;
   logs) "${compose[@]}" logs -f --since 5m client ;;
-  *) sed -n '2,6p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+  *) sed -n '2,7p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

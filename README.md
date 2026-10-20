@@ -93,6 +93,7 @@ The `fs42` command does the same from anywhere (install it once with `ln -s "$PW
 ```bash
 fs42 start                    # the TV, fullscreen
 fs42 start --windowed         # in a 1280x720 window at the top-left corner (or: --windowed 960x540)
+fs42 start --look crt         # the picture's look: original, broadcast (default) or crt
 fs42 kill                     # stop it
 fs42 logs                     # follow the player's log
 ```
@@ -112,6 +113,7 @@ On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in 
 - `media.method` is `http` (media streams from the server and mpv seeks straight to the right point) or `mount` with a `root`, e.g. `{"method": "mount", "root": "/mnt/fs42"}` for an SMB/NFS mount of the server's FieldStation42 directory. The share must resolve the library's symlinks on the server side: Samba can, NFS can't.
 - `main_config` holds this client's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the client's own.
 - `web_pages` (default `false`): web channels (guide page, weather, PPV menu, diagnostics) and the live fallback for an autobump that isn't rendered yet. Off, a client leaves web channels out of its lineup and shows standby for a bump that isn't ready; that keeps a 1 GB Pi comfortable. On, it needs the browser engine: answer yes in the installer, or build the Docker client with `--build-arg WEB_PAGES=true`.
+- `look` (default `broadcast`): how the picture looks on a modern screen. `broadcast` adds light scanlines, softness, bloom and colour bleed; `crt` a curved tube with an aperture grille; `original` leaves the picture as it is. The client's GPU applies it while playing (an mpv shader, `client/playback/looks/`): the server and the files are untouched. `fs42 start --look` overrides it.
 - `hwdec` (default `auto-safe`): how mpv decodes video. `auto-safe` uses the GPU wherever mpv knows it works well (VA-API on Intel and AMD, NVDEC on NVIDIA) and the CPU otherwise. On a Raspberry Pi 4, `v4l2m2m-copy` decodes H.264 in hardware.
 - `local_api_port`: only when the server runs on the same machine. The client's own API normally uses the server's port (4242); with the server there already, set e.g. `4243`. The web remote is then at `:4243/remote`, and an IR remote script needs `FS42_PORT=4243`.
 

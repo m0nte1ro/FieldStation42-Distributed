@@ -15,14 +15,14 @@ def _write(tmp_path, data):
 def test_load_client_config_applies_defaults_and_strips_slash(tmp_path):
     config = load_client_config(_write(tmp_path, {"server_url": "http://homelab:4242/"}))
     assert config == {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {},
-                      "local_api_port": None, "web_pages": False, "hwdec": "auto-safe"}
+                      "local_api_port": None, "web_pages": False, "hwdec": "auto-safe", "look": "broadcast"}
 
 
 def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
     data = {"server_url": "http://h:4242", "media": {"method": "mount", "root": "/mnt/fs42"},
             "main_config": {"start_channel": 3}}
     assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False,
-                                                                 hwdec="auto-safe")
+                                                                 hwdec="auto-safe", look="broadcast")
 
 
 def test_load_client_config_without_server_url_raises(tmp_path):
@@ -91,3 +91,20 @@ def test_web_stations_left_out_when_web_pages_off(tmp_path, monkeypatch):
 
 def test_web_stations_kept_when_web_pages_on(tmp_path, monkeypatch):
     assert _loaded_station_names(tmp_path, monkeypatch, True) == ["Loop", "Weather"]
+
+
+def test_the_look_is_retro_broadcast_unless_chosen(tmp_path, monkeypatch):
+    monkeypatch.delenv("FS42_LOOK", raising=False)
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242"}))["look"] == "broadcast"
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "look": "crt"}))["look"] == "crt"
+
+
+def test_fs42_start_look_wins_over_client_json(tmp_path, monkeypatch):
+    monkeypatch.setenv("FS42_LOOK", "original")
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "look": "crt"}))["look"] == "original"
+
+
+def test_an_unknown_look_says_which_exist(tmp_path, monkeypatch):
+    monkeypatch.delenv("FS42_LOOK", raising=False)
+    with pytest.raises(SystemExit, match="original, broadcast, crt"):
+        load_client_config(_write(tmp_path, {"server_url": "http://h:4242", "look": "vhs"}))

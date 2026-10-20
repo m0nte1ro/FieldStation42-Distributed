@@ -28,7 +28,7 @@ def run(tmp_path, client):
     calls = tmp_path / "calls"
     fake = tmp_path / "bin/docker"
     fake.parent.mkdir()
-    fake.write_text(f'#!/bin/sh\necho "$* | window=$FS42_WINDOW | pulse=$PULSE_SOCKET" >> {calls}\n')
+    fake.write_text(f'#!/bin/sh\necho "$* | window=$FS42_WINDOW | pulse=$PULSE_SOCKET | look=$FS42_LOOK" >> {calls}\n')
     fake.chmod(0o755)
     # called through a symlink, as from ~/.local/bin
     link = tmp_path / "bin/fs42"
@@ -45,12 +45,12 @@ def run(tmp_path, client):
 def test_start_runs_the_tv_fullscreen(run, client):
     result, calls = run("start")
     assert result.returncode == 0
-    assert calls == [f"compose -f {client}/compose.yml up -d | window= | pulse="]
+    assert calls == [f"compose -f {client}/compose.yml up -d | window= | pulse= | look="]
 
 
 def test_start_windowed_plays_in_a_1280x720_window(run):
     _, calls = run("start", "--windowed")
-    assert calls[0].endswith("| window=1280x720 | pulse=")
+    assert calls[0].endswith("| window=1280x720 | pulse= | look=")
 
 
 def test_start_windowed_takes_a_size(run):
@@ -60,12 +60,12 @@ def test_start_windowed_takes_a_size(run):
 
 def test_kill_stops_only_the_client(run, client):
     _, calls = run("kill")
-    assert calls == [f"compose -f {client}/compose.yml down | window= | pulse="]
+    assert calls == [f"compose -f {client}/compose.yml down | window= | pulse= | look="]
 
 
 def test_sound_setting_from_the_environment_is_kept(run):
     _, calls = run("start", env={"PULSE_SOCKET": "/run/user/1000/pulse/native"})
-    assert calls[0].endswith("| pulse=/run/user/1000/pulse/native")
+    assert "| pulse=/run/user/1000/pulse/native |" in calls[0]
 
 
 def test_anything_else_shows_how_to_use_it(run):
@@ -78,3 +78,20 @@ def test_a_local_override_file_is_added_when_present(run, client):
     (client / "compose.override.yml").write_text("services: {}\n")
     _, calls = run("start")
     assert calls[0].startswith(f"compose -f {client}/compose.yml -f {client}/compose.override.yml up -d")
+
+
+def test_start_with_a_look(run):
+    _, calls = run("start", "--look", "crt")
+    assert calls[0].endswith("| window= | pulse= | look=crt")
+
+
+def test_look_and_window_in_any_order(run):
+    _, first = run("start", "--look", "original", "--windowed", "960x540")
+    assert first[0].endswith("| window=960x540 | pulse= | look=original")
+    _, both = run("start", "--windowed", "--look", "broadcast")
+    assert both[1].endswith("| window=1280x720 | pulse= | look=broadcast")
+
+
+def test_an_unknown_start_option_is_refused(run):
+    result, calls = run("start", "--loook", "crt")
+    assert result.returncode != 0 and calls == []
