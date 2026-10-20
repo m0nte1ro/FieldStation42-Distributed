@@ -58,6 +58,11 @@ def mpv_text_options(osd_style):
             "osd_font_size": 72, "osd_align_x": "center", "osd_align_y": "bottom", "osd_margin_y": 60}
 
 
+def mpv_header_options(headers):
+    # mpv fetches the media itself, so it sends the client's headers for the server too
+    return {"http_header_fields_append": [f"{k}: {v}" for k, v in headers.items()]} if headers else {}
+
+
 def mpv_look_options(look, resolution="native"):
     # shaders run on the GPU at display time; the files themselves are never touched. The ceiling
     # shrinks the video's own pixels first, then the look works on the screen's
@@ -228,6 +233,7 @@ class StationPlayer:
                 hwdec=self.client_config["hwdec"],
                 **mpv_look_options(self.client_config["look"], self.client_config["resolution"]),
                 **mpv_text_options(self.client_config["osd_style"]),
+                **mpv_header_options(self.client_config["server_headers"]),
                 idle=True,
                 force_window=True,
                 script_opts="osc-idlescreen=no",

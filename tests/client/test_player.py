@@ -357,3 +357,18 @@ def test_the_countdown_mpv_draws_is_in_the_osd_style(player, monkeypatch, style,
     assert kwargs["osd_fonts_dir"].endswith("client/osd/fonts")
     # big, at the bottom, centred: readable across the room
     assert (kwargs["osd_align_x"], kwargs["osd_align_y"]) == ("center", "bottom") and kwargs["osd_font_size"] >= 64
+
+
+def test_mpv_identifies_itself_to_a_protected_server(player, tmp_path):
+    (tmp_path / "client.json").write_text(json.dumps({"server_url": "https://tv.example", "server_headers": {
+        "CF-Access-Client-Id": "tv.access", "CF-Access-Client-Secret": "s3cret"}}))
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert mpv.call_args.kwargs["http_header_fields_append"] == [
+        "CF-Access-Client-Id: tv.access", "CF-Access-Client-Secret: s3cret"]
+
+
+def test_no_token_no_extra_headers(player):
+    with patch.object(station_player, "MPV") as mpv:
+        StationPlayer(dict(TOONS), lambda: None)
+    assert "http_header_fields_append" not in mpv.call_args.kwargs

@@ -143,3 +143,18 @@ def test_ppv_play_file_is_local_and_needs_no_file_on_the_client(client_app, tmp_
         StationManager._StationManager__we_are_all_one = {}
         StationManager._initialized = False
         StationManager.stations = []
+
+
+ACCESS = {"CF-Access-Client-Id": "tv.access", "CF-Access-Client-Secret": "s3cret"}
+
+
+def test_the_proxy_identifies_the_client_to_a_protected_server():
+    # behind Cloudflare Access the server only answers requests carrying the client's service token
+    from fastapi import FastAPI
+
+    upstream = Upstream()
+    app = FastAPI()
+    app.include_router(proxy.build_proxy_router(SERVER_URL, transport=httpx.MockTransport(upstream), headers=ACCESS))
+    TestClient(app).get("/static/remote.html", headers={"CF-Access-Client-Secret": "from-the-browser"})
+    sent = upstream.requests[0].headers
+    assert (sent["cf-access-client-id"], sent["cf-access-client-secret"]) == ("tv.access", "s3cret")

@@ -16,7 +16,7 @@ def test_load_client_config_applies_defaults_and_strips_slash(tmp_path):
     config = load_client_config(_write(tmp_path, {"server_url": "http://homelab:4242/"}))
     assert config == {"server_url": "http://homelab:4242", "media": {"method": "http"}, "main_config": {},
                       "local_api_port": None, "web_pages": False, "hwdec": "auto-safe", "look": "broadcast",
-                      "resolution": "576", "osd_style": "vcr"}
+                      "resolution": "576", "osd_style": "vcr", "server_headers": {}}
 
 
 def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
@@ -24,7 +24,7 @@ def test_load_client_config_keeps_given_media_and_overrides(tmp_path):
             "main_config": {"start_channel": 3}}
     assert load_client_config(_write(tmp_path, data)) == dict(data, local_api_port=None, web_pages=False,
                                                                  hwdec="auto-safe", look="broadcast",
-                                                                 resolution="576", osd_style="vcr")
+                                                                 resolution="576", osd_style="vcr", server_headers={})
 
 
 def test_load_client_config_without_server_url_raises(tmp_path):
@@ -143,3 +143,9 @@ def test_an_unknown_resolution_says_which_exist(tmp_path, monkeypatch):
     monkeypatch.delenv("FS42_RESOLUTION", raising=False)
     with pytest.raises(SystemExit, match="native, 576, 480"):
         load_client_config(_write(tmp_path, {"server_url": "http://h", "resolution": "1080"}))
+
+
+def test_server_headers_must_be_names_and_values(tmp_path):
+    assert load_client_config(_write(tmp_path, {"server_url": "http://h"}))["server_headers"] == {}
+    with pytest.raises(SystemExit, match="server_headers"):
+        load_client_config(_write(tmp_path, {"server_url": "http://h", "server_headers": ["CF-Access-Client-Id"]}))
