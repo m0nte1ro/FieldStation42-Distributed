@@ -200,6 +200,7 @@ class StationPlayer:
 
         # media comes from the server over HTTP (or its mount); files the client has play locally
         self.client_config = load_client_config()
+        self._look_checked = False
 
         if not mpv:
             self._l.info("Starting MPV instance")
@@ -533,6 +534,20 @@ class StationPlayer:
 
         self.mpv.terminate()
 
+    def _report_inactive_look(self):
+        # the look and the resolution ceiling are shaders, which only mpv's GPU outputs run. Without
+        # hardware OpenGL (e.g. Docker on WSL) mpv falls back to one that ignores them: say so, once
+        if self._look_checked or not mpv_look_options(self.client_config["look"], self.client_config["resolution"]):
+            return
+        vo = getattr(self.mpv, "current_vo", None)
+        if not vo:
+            return
+        self._look_checked = True
+        if vo not in ("gpu", "gpu-next"):
+            self._l.warning(
+                f"look {self.client_config['look']} and resolution {self.client_config['resolution']} are inactive: "
+                f"mpv draws with '{vo}', which ignores shaders (no hardware OpenGL here)")
+
     def update_filters(self):
         self.mpv.vf = self.reception.filter()
 
@@ -675,6 +690,7 @@ class StationPlayer:
 
                 # Show Now Playing overlay for audio feature files
                 self._l.info(f"Media type: {media_type}, Content type: {content_type}")
+                self._report_inactive_look()
                 if media_type == 'audio' and content_type == 'feature':
                     self._show_now_playing(file_path)
                 elif media_type == 'video':

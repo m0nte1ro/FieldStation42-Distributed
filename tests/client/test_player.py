@@ -316,3 +316,29 @@ def test_the_original_look_runs_no_shader(player, monkeypatch):
     with patch.object(station_player, "MPV") as mpv:
         StationPlayer(dict(TOONS), lambda: None)
     assert "glsl_shaders_append" not in mpv.call_args.kwargs
+
+
+@pytest.mark.parametrize("vo, warned", [("sdl", True), ("x11", True), ("gpu", False), ("gpu-next", False)])
+def test_a_look_mpv_cannot_draw_is_reported_once(player, monkeypatch, caplog, vo, warned):
+    # e.g. Docker on WSL: only software OpenGL, so mpv falls back to an output that ignores shaders
+    monkeypatch.delenv("FS42_LOOK", raising=False)
+    monkeypatch.delenv("FS42_RESOLUTION", raising=False)
+    p = player()
+    p.mpv.current_vo = vo
+    with caplog.at_level("WARNING"):
+        p.play_file("catalog/a.mp4", file_duration=600, offset_seconds=0)
+        p.play_file("catalog/a.mp4", file_duration=600, offset_seconds=0)
+    reports = [r for r in caplog.records if "ignores shaders" in r.getMessage()]
+    assert len(reports) == (1 if warned else 0)
+    if warned:
+        assert "broadcast" in reports[0].getMessage() and vo in reports[0].getMessage()
+
+
+def test_no_report_when_no_look_is_asked_for(player, monkeypatch, caplog):
+    monkeypatch.setenv("FS42_LOOK", "original")
+    monkeypatch.setenv("FS42_RESOLUTION", "native")
+    p = player()
+    p.mpv.current_vo = "sdl"
+    with caplog.at_level("WARNING"):
+        p.play_file("catalog/a.mp4", file_duration=600, offset_seconds=0)
+    assert not [r for r in caplog.records if "ignores shaders" in r.getMessage()]

@@ -101,7 +101,7 @@ fs42 kill                     # stop it
 fs42 logs                     # follow the player's log
 ```
 
-On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. On WSL the picture is drawn by the CPU: GPU drawing from inside a container never reaches WSLg's screen (its X server lives in a separate system distro). Hardware decoding matters on the real TVs, where mpv talks to the GPU directly.
+On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in `client/.env`. Settings for one machine only go in `client/compose.override.yml` (outside git), which `fs42` adds when it exists. On WSL the picture is drawn by the CPU: GPU drawing from inside a container never reaches WSLg's screen (its X server lives in a separate system distro). That also means no `look` or `resolution` ceiling there: they are GPU shaders, and software OpenGL drops half the frames running them, so mpv falls back to an output without them and the client says so in its log. They work on a Pi or a PC with its own X11 session. Hardware decoding matters on the real TVs, where mpv talks to the GPU directly.
 
 ### Settings: `client.json`
 
