@@ -214,6 +214,15 @@ class LiquidIO:
             connection.commit()
 
     @staticmethod
+    def _show_folder_title(station_name, content):
+        if not content or isinstance(content, list) or not getattr(content, "tag", None):
+            return None
+        conf = StationManager().station_by_name(station_name)
+        if not conf or not conf.get("content_dir"):
+            return None
+        return TitleParser.show_folder_title(content.path, conf["content_dir"], content.tag)
+
+    @staticmethod
     def _build_block_from_row(row, content_cache: dict = None):
         """
         Helper method to build a LiquidBlock from a database row.
@@ -260,6 +269,10 @@ class LiquidIO:
         if main_normal:
             custom_patterns = StationManager().server_conf.get("title_patterns", [])
             the_title = TitleParser.parse_title(the_title, custom_patterns)
+            # an episode inside a show's folder takes the folder's name, which is cleaner than any file name
+            folder_title = LiquidIO._show_folder_title(_station, content_obj)
+            if folder_title:
+                the_title = folder_title
 
         args = (
             content_obj,

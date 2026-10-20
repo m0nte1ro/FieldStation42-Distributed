@@ -21,7 +21,29 @@ DEFAULT_UPPERCASE_WORDS = {
 }
 
 
+# media-server ids and similar tags in folder names: "Show [tmdbid-123]", "Show [imdbid-tt1]"
+_BRACKETED = re.compile(r"\s*\[[^\]]*\]")
+# a trailing year: "The Pink Panther (1964)"
+_TRAILING_YEAR = re.compile(r"\s*\(\d{4}\)$")
+
+
 class TitleParser:
+    @staticmethod
+    def show_folder_title(path: str, content_dir: str, tag: str):
+        """The show's name from its folder - <content_dir>/<tag>/<Show>/.../episode - or None.
+
+        Libraries kept for media servers (Jellyfin, Plex) name each show's folder properly, while
+        episode file names carry years, regions and release tags ("Riverdale.US.S06E13.720p...").
+        """
+        try:
+            inside = Path(path).relative_to(Path(content_dir) / tag).parts
+        except ValueError:
+            return None
+        if len(inside) < 2:
+            return None  # a file straight in the tag folder: no show folder
+        name = _TRAILING_YEAR.sub("", _BRACKETED.sub("", inside[0])).strip()
+        return " ".join(name.split()) or None
+
     @staticmethod
     def _apply_case(word: str, upper_words: set) -> str:
         if word.upper() in upper_words:
