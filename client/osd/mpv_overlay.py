@@ -3,7 +3,8 @@ import os
 
 from PySide6.QtGui import QImage
 
-# mpv overlays are numbered 0-63; the OSD is one image over the whole picture
+# mpv overlays are numbered 0-63 and drawn in that order: static at the bottom, the OSD over it
+STATIC_ID = 0
 OVERLAY_ID = 1
 
 
@@ -80,3 +81,41 @@ class MpvOverlay:
         self._release()
         if os.path.exists(self.path):
             os.remove(self.path)
+
+
+class StaticOverlay:
+    """TV static over the picture while mpv tunes a channel or waits for data.
+
+    A few small frames of noise, made once; mpv scales the one shown to the whole picture on the GPU,
+    and a different frame each tick makes it move.
+    """
+
+    WIDTH, HEIGHT, FRAMES = 320, 180, 8
+
+    def __init__(self, mpv, path):
+        self.mpv = mpv
+        self.path = path
+        self._frame_bytes = self.WIDTH * self.HEIGHT * 4
+        with open(path, "w+b") as f:
+            f.truncate(self.FRAMES * self._frame_bytes)
+            self._memory = mmap.mmap(f.fileno(), self.FRAMES * self._frame_bytes)
+        for i in range(self.FRAMES):
+            noise = QImage(os.urandom(self.WIDTH * self.HEIGHT), self.WIDTH, self.HEIGHT, self.WIDTH,
+                           QImage.Format_Grayscale8).convertToFormat(QImage.Format_ARGB32_Premultiplied)
+            start = i * self._frame_bytes
+            self._memory[start:start + self._frame_bytes] = bytes(noise.constBits())[:self._frame_bytes]
+        self._next = 0
+        self._shown = False
+
+    def show(self, on):
+        if on:
+            width, height = int(self.mpv.osd_width or 0), int(self.mpv.osd_height or 0)
+            if min(width, height) <= 0:
+                return
+            self.mpv.command("overlay-add", STATIC_ID, 0, 0, self.path, self._next * self._frame_bytes, "bgra",
+                             self.WIDTH, self.HEIGHT, self.WIDTH * 4, width, height)
+            self._next = (self._next + 1) % self.FRAMES
+            self._shown = True
+        elif self._shown:
+            self.mpv.command("overlay-remove", STATIC_ID)
+            self._shown = False

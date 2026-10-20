@@ -17,7 +17,7 @@ from python_mpv_jsonipc import MPV
 from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
 from client.osd.logo_display import LogoDisplay, LogoDisplayConfig
 from client.playback.config import load_client_config, prepare_station_loading
-from client.osd.mpv_overlay import MpvOverlay
+from client.osd.mpv_overlay import MpvOverlay, StaticOverlay
 from client.osd import styles
 
 SOCKET_FILE = "runtime/play_status.socket"
@@ -76,6 +76,8 @@ class StatusDisplay(object):
         self.config = config
         # vcr: the configured text below; other styles are drawn by client/osd/styles.py
         self.style = style
+        # while a channel tunes the name waits, so it appears with the picture and not before
+        self.hold = False
         self._font = resolve_font(self.config.font, self.config.font_size)
         self._string = ""
 
@@ -114,11 +116,12 @@ class StatusDisplay(object):
                 self._string = new_string
 
     def update(self, dt):
-        self.time_since_change += dt
+        if not self.hold:
+            self.time_since_change += dt
         self.check_status()
 
     def draw(self, painter: QPainter, screen_w: float, screen_h: float):
-        if self.time_since_change >= self.config.display_time:
+        if self.hold or self.time_since_change >= self.config.display_time:
             return
         if not self._string:
             return
@@ -166,10 +169,17 @@ class VolumeDisplayConfig(BaseModel):
 VOLUME_BLOCKS = 25
 
 
+# how often the OSD asks the system whether the sound is muted (a mute made outside FS42, or before it started)
+MUTE_POLL_SECONDS = 3.0
+
+
 class VolumeDisplay(object):
-    def __init__(self, config: VolumeDisplayConfig, style: str = "vcr"):
+    def __init__(self, config: VolumeDisplayConfig, style: str = "vcr", mute_state=None):
         self.config = config
         self.style = style
+        # a function answering True/False/None (unknown); None: only FS42's own volume messages count
+        self._mute_state = mute_state
+        self._since_poll = MUTE_POLL_SECONDS
         self.volume = 0.0
         self.muted = False
         # Start hidden until we actually see a volume message.
@@ -218,6 +228,12 @@ class VolumeDisplay(object):
 
     def update(self, dt):
         self.time_since_change += dt
+        self._since_poll += dt
+        if self._mute_state and self._since_poll >= MUTE_POLL_SECONDS:
+            self._since_poll = 0.0
+            state = self._mute_state()
+            if state is not None:
+                self.muted = state
         self.check_volume()
 
     def draw(self, painter: QPainter, screen_w: float, screen_h: float):
@@ -293,7 +309,9 @@ class VolumeDisplay(object):
         painter.drawText(QPointF(x + size * 1.5, y + size * 0.85), "MUTE")
 
 
-def load_objects(style: str = "vcr") -> list:
+def load_objects(style: str = "vcr", mute_state=None) -> list:
+    if mute_state is None:
+        from client.platform.volume import current_mute_state as mute_state
     objects = []
 
     if CONFIG_FILE_PATH.exists():
@@ -321,7 +339,7 @@ def load_objects(style: str = "vcr") -> list:
                 elif obj["type"] == "VolumeDisplay":
                     del obj["type"]
                     config = VolumeDisplayConfig.model_validate(obj)
-                    objects.append(VolumeDisplay(config, style))
+                    objects.append(VolumeDisplay(config, style, mute_state))
                 else:
                     print(f"Unrecognized osd object type: {obj['type']}")
     else:
@@ -336,7 +354,7 @@ def load_objects(style: str = "vcr") -> list:
             if isinstance(obj, StatusDisplay):
                 volume_config.color = obj.config.text_color
                 break
-        objects.append(VolumeDisplay(volume_config, style))
+        objects.append(VolumeDisplay(volume_config, style, mute_state))
 
     return objects
 
@@ -344,6 +362,8 @@ def load_objects(style: str = "vcr") -> list:
 # where the OSD's frames go for mpv to read: shared memory, never the SD card. In Docker the client
 # and the OSD share a tmpfs at this path (client/compose.yml)
 OVERLAY_FILE = os.environ.get("FS42_OSD_FILE", "/dev/shm/fs42-osd.bgra")
+# the static's noise frames, next to the OSD's
+STATIC_FILE = os.path.join(os.path.dirname(OVERLAY_FILE), "fs42-static.bgra")
 MPV_SOCKET = "runtime/mpv.socket"
 
 
@@ -354,6 +374,7 @@ class MpvOsd:
         self.objects = objects
         self._connect = connect or (lambda: MPV(start_mpv=False, ipc_socket=MPV_SOCKET))
         self.overlay = None
+        self.static = None
 
         self._elapsed = QElapsedTimer()
         self._elapsed.start()
@@ -368,17 +389,26 @@ class MpvOsd:
         dt = (now_ns - self._last_ns) / 1e9
         self._last_ns = now_ns
 
-        for obj in self.objects:
-            obj.update(dt)
-
         try:
             if self.overlay is None:
-                self.overlay = MpvOverlay(self._connect(), OVERLAY_FILE)
+                mpv = self._connect()
+                self.overlay = MpvOverlay(mpv, OVERLAY_FILE)
+                self.static = StaticOverlay(mpv, STATIC_FILE)
+            mpv = self.overlay.mpv
+            # mpv is opening a channel, seeking into it or waiting for data: no picture yet
+            tuning = bool(mpv.core_idle) and not mpv.idle_active
+            for obj in self.objects:
+                if isinstance(obj, StatusDisplay):
+                    obj.hold = tuning
+                obj.update(dt)
+            self.static.show(tuning)
             self.draw(self.overlay)
         except Exception as e:
             # the player isn't up yet, or restarted mpv: connect again on a later tick
             print(f"OSD waiting for mpv: {e}")
             self.overlay = None
+            for obj in self.objects:
+                obj.update(dt)
 
     def draw(self, overlay):
         image = overlay.frame()

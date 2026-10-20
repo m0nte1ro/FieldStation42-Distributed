@@ -15,6 +15,25 @@ VOLUME_STEP = 2
 
 
 
+def current_mute_state():
+    """Whether this machine's sound is muted, read without changing anything; None if no mixer answers."""
+    checks = [
+        ("pactl", ["pactl", "get-sink-mute", "@DEFAULT_SINK@"], lambda out: "yes" in out.lower()),
+        ("amixer", ["amixer", "sget", "Master"], lambda out: "[off]" in out),
+        ("wpctl", ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"], lambda out: "MUTED" in out),
+    ]
+    for tool, cmd, is_muted in checks:
+        if not shutil.which(tool):
+            continue
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+        except Exception:
+            continue
+        if result.returncode == 0 and result.stdout.strip():
+            return is_muted(result.stdout)
+    return None
+
+
 async def _control_volume(action: str):
     """Control volume using the most appropriate Linux audio system"""
     
