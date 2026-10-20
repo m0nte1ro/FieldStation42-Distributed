@@ -86,7 +86,9 @@ class ClientSync:
         self._write(MANIFEST_STATE, json.dumps(state).encode())
 
     def sync_rundown(self):
-        response = self._get("/client/rundown", hours=24)
+        # the bumps come rendered in this client's OSD style
+        style = {"osd_style": self.config["osd_style"]} if self.config.get("osd_style") else {}
+        response = self._get("/client/rundown", hours=24, **style)
         server_time = response.json()["server_time"]
         self._write(RUNDOWN_PATH, response.content)
         clock.set_server_time(server_time)

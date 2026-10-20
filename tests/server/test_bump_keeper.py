@@ -103,3 +103,9 @@ def test_schedule_change_triggers_a_scan():
     assert _wait_for(scans, 2) == 2
     time.sleep(0.2)
     assert len(scans) == 2
+
+
+def test_bumps_are_rendered_in_each_style_in_use(schedule):
+    jobs = keeper.pending_jobs(STATIONS, NOW, styles=[None, "cable"])
+    assert {j.params.get("variation") for j in jobs} == {None, "cable"}
+    assert len(jobs) == 2 * len(keeper.pending_jobs(STATIONS, NOW))

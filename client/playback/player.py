@@ -45,6 +45,19 @@ from client.platform.window import mpv_window_options, window_size
 LOOKS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "looks")
 
 
+OSD_FONTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "osd", "fonts")
+# the text mpv draws itself (a filler's countdown) in each OSD style's font and colours
+OSD_TEXT = {"vcr": ("VT323", "#39FF14", "#000000"), "cable": ("Michroma", "#FFFFFF", "#0A0E1C"),
+            "kids": ("Fredoka", "#FFFFFF", "#1E2878")}
+
+
+def mpv_text_options(osd_style):
+    font, color, border = OSD_TEXT[osd_style]
+    # big, at the bottom, centred: a countdown read across the room
+    return {"osd_fonts_dir": OSD_FONTS_DIR, "osd_font": font, "osd_color": color, "osd_border_color": border,
+            "osd_font_size": 72, "osd_align_x": "center", "osd_align_y": "bottom", "osd_margin_y": 60}
+
+
 def mpv_look_options(look, resolution="native"):
     # shaders run on the GPU at display time; the files themselves are never touched. The ceiling
     # shrinks the video's own pixels first, then the look works on the screen's
@@ -214,6 +227,7 @@ class StationPlayer:
                 **mpv_window_options(window_size()),
                 hwdec=self.client_config["hwdec"],
                 **mpv_look_options(self.client_config["look"], self.client_config["resolution"]),
+                **mpv_text_options(self.client_config["osd_style"]),
                 idle=True,
                 force_window=True,
                 script_opts="osc-idlescreen=no",

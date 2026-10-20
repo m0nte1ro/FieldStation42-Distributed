@@ -80,3 +80,9 @@ def test_next_show_is_the_current_one_when_it_resumes_after_the_break():
     assert next_show_title(["commercial", "bump", "feature"], "Bluey", "Peppa") == "Bluey"
     assert next_show_title(["commercial", "bump"], "Bluey", "Peppa") == "Peppa"
     assert next_show_title([], "Bluey", None) is None
+
+
+def test_a_client_style_renders_the_bump_in_that_look():
+    station, cable, kids = job_for(bump()), job_for(bump(), style="cable"), job_for(bump(), style="kids")
+    assert station.params["variation"] == "retro" and cable.params["variation"] == "cable"
+    assert len({station.key, cable.key, kids.key}) == 3

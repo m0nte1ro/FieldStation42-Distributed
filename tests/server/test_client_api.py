@@ -290,3 +290,23 @@ def test_mid_show_next_up_names_the_show_that_resumes(client):
     resumes = _rendered(job_for(AUTOBUMP, "A"))
     _rendered(job_for(AUTOBUMP, "Peppa"))
     assert client.get("/client/rundown").json()["stations"]["Toons"][0]["plan"][1]["path"] == resumes.path
+
+
+def test_a_client_gets_bumps_in_its_osd_style(client):
+    from server.bumps.jobs import job_for
+    from server.bumps.styles import styles_in_use
+
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=MESSAGE)
+    station, cable = _rendered(job_for(MESSAGE)), _rendered(job_for(MESSAGE, style="cable"))
+    plan = lambda query: client.get("/client/rundown" + query).json()["stations"]["Toons"][0]["plan"][0]["path"]
+    assert plan("?osd_style=cable") == cable.path
+    assert plan("") == station.path
+    assert plan("?osd_style=neon") == station.path  # unknown: the station's look
+    assert "cable" in styles_in_use()
+
+
+def test_a_style_not_rendered_yet_leaves_the_autobump_for_the_client(client):
+    now = _now()
+    _insert_block(now - datetime.timedelta(minutes=10), now + datetime.timedelta(minutes=20), "A", plan_path=MESSAGE)
+    assert client.get("/client/rundown?osd_style=kids").json()["stations"]["Toons"][0]["plan"][0]["path"] == MESSAGE

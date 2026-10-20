@@ -33,9 +33,9 @@ def block_to_json(block):
     }
 
 
-def _swap_rendered(plan, current_title, following_title):
-    # an autobump the server has rendered goes out as its clip; anything else unchanged
-    for i, job in plan_jobs(plan, current_title, following_title):
+def _swap_rendered(plan, current_title, following_title, style=None):
+    # an autobump the server has rendered (in the client's style) goes out as its clip; anything else unchanged
+    for i, job in plan_jobs(plan, current_title, following_title, style):
         if os.path.exists(job.path):
             swapped = {"path": job.path, "skip": 0, "duration": plan[i]["duration"], "is_stream": False,
                        "content_type": "bump", "media_type": "video"}
@@ -53,7 +53,7 @@ def _content_paths(content):
     return [content.path]
 
 
-def build_rundown(stations, now, hours):
+def build_rundown(stations, now, hours, style=None):
     end = now + datetime.timedelta(hours=hours)
     liquid = LiquidIO()
     by_station = {}
@@ -66,7 +66,7 @@ def build_rundown(stations, now, hours):
         for i, block in enumerate(blocks):
             data = block_to_json(block)
             following = blocks[i + 1].title if i + 1 < len(blocks) else None
-            data["plan"] = _swap_rendered(data["plan"], block.title, following)
+            data["plan"] = _swap_rendered(data["plan"], block.title, following, style)
             encoded.append(data)
         by_station[station["network_name"]] = encoded
         for block in blocks:
