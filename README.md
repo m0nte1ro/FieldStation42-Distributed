@@ -70,7 +70,7 @@ Requirements: 64-bit Linux and an X11 session on `DISPLAY=:0` (on Raspberry Pi O
 ```bash
 sudo apt install mpv python3-venv python3-tk
 tar -xzf fs42-client-<version>.tar.gz && cd fs42-client
-bash client/platform/install.sh     # asks for the server URL, web pages, the look and OSD style; offers to start on boot
+bash client/platform/install.sh     # asks for the server URL, web pages, the look, resolution and OSD style; offers to start on boot
 ```
 
 (From a clone of the repository the same `install.sh` works.)
@@ -96,6 +96,7 @@ fs42 start --windowed         # in a 1280x720 window at the top-left corner (or:
 fs42 setup                    # choose the server, the picture's look and the OSD style (saved in client/client.json)
 fs42 start --look crt         # this run only: original, broadcast or crt
 fs42 start --osd cable        # this run only: vcr, cable or kids
+fs42 start --resolution 480   # this run only: native, 576 or 480 lines at most
 fs42 kill                     # stop it
 fs42 logs                     # follow the player's log
 ```
@@ -116,6 +117,7 @@ On WSL the sound goes through WSLg: put `PULSE_SOCKET=/mnt/wslg/PulseServer` in 
 - `main_config` holds this client's overrides of the server's `main_config.json` (start channel, recall last channel, parental controls theme, ...). Volume is the client's own.
 - `web_pages` (default `false`): web channels (guide page, weather, PPV menu, diagnostics) and the live fallback for an autobump that isn't rendered yet. Off, a client leaves web channels out of its lineup and shows standby for a bump that isn't ready; that keeps a 1 GB Pi comfortable. On, it needs the browser engine: answer yes in the installer, or build the Docker client with `--build-arg WEB_PAGES=true`.
 - `look` (default `broadcast`): how the picture looks on a modern screen. `broadcast` adds light scanlines, softness, bloom and colour bleed; `crt` a curved tube with an aperture grille; `original` leaves the picture as it is. The client's GPU applies it while playing (an mpv shader, `client/playback/looks/`): the server and the files are untouched. `fs42 start --look` overrides it.
+- `resolution` (default `576` with the `broadcast` and `crt` looks, `native` with `original`): the most lines a picture keeps before it's scaled to the screen, so a 1080p show and a 2005 cartoon look like the same broadcast. `576` is PAL TV, `480` NTSC (softer still), `native` each file's own. It's a GPU shader too (`client/playback/looks/ceiling-*.glsl`); `fs42 start --resolution` overrides it.
 - `osd_style` (default `vcr`): how the channel, volume and mute are drawn. `vcr` is green terminal text like a VCR menu (positions and colours from `client/osd/osd.json`), `cable` a dark 90s cable-box panel with the programme's title, `kids` round and colourful. `fs42 start --osd` overrides it. The installer and `fs42 setup` ask for both the look and the OSD style.
 - `hwdec` (default `auto-safe`): how mpv decodes video. `auto-safe` uses the GPU wherever mpv knows it works well (VA-API on Intel and AMD, NVDEC on NVIDIA) and the CPU otherwise. On a Raspberry Pi 4, `v4l2m2m-copy` decodes H.264 in hardware.
 - `local_api_port`: only when the server runs on the same machine. The client's own API normally uses the server's port (4242); with the server there already, set e.g. `4243`. The web remote is then at `:4243/remote`, and an IR remote script needs `FS42_PORT=4243`.

@@ -4,6 +4,9 @@ import os
 CLIENT_CONFIG_PATH = "client.json"
 # how the picture looks: a GPU shader mpv runs over every frame (client/playback/looks/<look>.glsl)
 LOOKS = ("original", "broadcast", "crt")
+# the most lines a picture keeps before it's scaled to the screen (client/playback/looks/ceiling-<n>.glsl):
+# 576 is PAL, 480 NTSC; "native" keeps the file's own
+RESOLUTIONS = ("native", "576", "480")
 # how the OSD (channel, volume, mute) is drawn: client/osd/styles.py
 OSD_STYLES = ("vcr", "cable", "kids")
 
@@ -31,6 +34,11 @@ def load_client_config(path=CLIENT_CONFIG_PATH):
     config["look"] = os.environ.get("FS42_LOOK") or config.get("look", "broadcast")
     if config["look"] not in LOOKS:
         raise SystemExit(f"look must be one of {', '.join(LOOKS)}, not {config['look']!r}")
+    # fs42 start --resolution wins; unset, the retro looks get PAL's 576 lines and original the file's own
+    config["resolution"] = str(os.environ.get("FS42_RESOLUTION") or config.get("resolution")
+                               or ("native" if config["look"] == "original" else "576"))
+    if config["resolution"] not in RESOLUTIONS:
+        raise SystemExit(f"resolution must be one of {', '.join(RESOLUTIONS)}, not {config['resolution']!r}")
     # fs42 start --osd wins over client.json
     config["osd_style"] = os.environ.get("FS42_OSD") or config.get("osd_style", "vcr")
     if config["osd_style"] not in OSD_STYLES:
