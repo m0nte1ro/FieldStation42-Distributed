@@ -61,6 +61,9 @@ async def _volume_amixer(action: str):
     mixer = "Master"
 
     try:
+        if action in ("up", "down"):
+            # changing the volume brings the sound back, like a TV
+            subprocess.run(["amixer", "sset", mixer, "unmute"], capture_output=True, text=True, check=True)
         if action == "up":
             # Check current volume before increasing
             get_status = subprocess.run(
@@ -152,6 +155,9 @@ async def _volume_amixer(action: str):
 async def _volume_pulseaudio(action: str):
     """Control volume using PulseAudio pactl"""
     try:
+        if action in ("up", "down"):
+            # changing the volume brings the sound back, like a TV
+            subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "0"], capture_output=True, text=True, check=True)
         if action == "up":
             # Check current volume before increasing
             current_volume_str = await _get_pulseaudio_volume()
@@ -194,6 +200,9 @@ async def _volume_pulseaudio(action: str):
 async def _volume_wireplumber(action: str):
     """Control volume using WirePlumber wpctl (newer PipeWire systems)"""
     try:
+        if action in ("up", "down"):
+            # changing the volume brings the sound back, like a TV
+            subprocess.run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"], capture_output=True, text=True, check=True)
         if action == "up":
             # wpctl has a built-in limit option
             # Using --limit=1.0 caps volume at 100%

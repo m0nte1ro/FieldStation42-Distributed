@@ -10,8 +10,8 @@ sys.path.insert(0, str(project_root))
 
 from pydantic import BaseModel
 
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QPainter, QPen
-from PySide6.QtCore import Qt, QElapsedTimer, QTimer
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QPainter, QPen, QPolygonF
+from PySide6.QtCore import Qt, QElapsedTimer, QPointF, QRectF, QTimer
 from python_mpv_jsonipc import MPV
 
 from client.osd.osd_layout import HAlignment, VAlignment, frac_to_margin_px, frac_to_size_px, resolve_top_left
@@ -22,7 +22,8 @@ from client.osd.mpv_overlay import MpvOverlay
 SOCKET_FILE = "runtime/play_status.socket"
 VOLUME_SOCKET_FILE = "runtime/volume.socket"
 CONFIG_FILE_PATH = Path("client/osd/osd.json")
-DEFAULT_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# VT323: a CRT terminal face (SIL Open Font License, client/osd/fonts/OFL.txt)
+DEFAULT_FONT = str(Path(__file__).parent / "fonts" / "VT323-Regular.ttf")
 
 _registered_font_families: dict[str, str] = {}
 
@@ -61,7 +62,7 @@ class StatusDisplayConfig(BaseModel):
     valign: VAlignment = VAlignment.TOP
     format_text: str = "{channel_number} - {network_name}"
     text_color: tuple[int, int, int, int] = (0, 255, 0, 200)
-    font_size: int = 40
+    font_size: int = 60
     expansion_factor: float = 1.0
     font: str | None = None
     x_margin: float = 0.1
@@ -156,10 +157,14 @@ class VolumeDisplayConfig(BaseModel):
     padding: float = 0.008
 
 
+VOLUME_BLOCKS = 25
+
+
 class VolumeDisplay(object):
     def __init__(self, config: VolumeDisplayConfig):
         self.config = config
         self.volume = 0.0
+        self.muted = False
         # Start hidden until we actually see a volume message.
         self.time_since_change = float("inf")
 
@@ -183,18 +188,19 @@ class VolumeDisplay(object):
         if raw_volume is None:
             return
 
+        # "MUTED (75%)" or "MUTE": the mute sign stays up until the sound comes back
+        self.muted = "MUTE" in str(raw_volume).upper()
+        self.time_since_change = 0.0
+
         # The volume field can arrive in several shapes depending on the mixer:
         # "75%", "MUTED (75%)", "unknown", "MUTE", etc. Pull the first number
         # out of whatever we get so a decorated string still drives the meter. If
         # there's no number at all (e.g. "unknown"), there's nothing to show.
         match = re.search(r"\d+(?:\.\d+)?", str(raw_volume))
-        if not match:
+        if match:
+            self.volume = max(0.0, min(1.0, float(match.group()) / 100.0))
+        elif not self.muted:
             print(f"No volume level in volume status, {raw_volume}")
-            return
-        pct = float(match.group())
-
-        self.volume = max(0.0, min(1.0, pct / 100.0))
-        self.time_since_change = 0.0
 
         # Truncate the socket so we only display each change once.
         try:
@@ -208,6 +214,9 @@ class VolumeDisplay(object):
         self.check_volume()
 
     def draw(self, painter: QPainter, screen_w: float, screen_h: float):
+        if self.muted:
+            self.draw_mute(painter, screen_w, screen_h)
+            return
         if self.time_since_change >= self.config.display_time:
             return
 
@@ -230,11 +239,48 @@ class VolumeDisplay(object):
         pad_x = frac_to_margin_px(self.config.padding, screen_w)
         pad_y = frac_to_margin_px(self.config.padding, screen_h)
         inner_h = h - 2.0 * pad_y
-        inner_w = (w - 2.0 * pad_x) * self.volume
-        if inner_w > 0.0 and inner_h > 0.0:
+        # blocks, like the volume bar of a 90s TV
+        step = (w - 2.0 * pad_x) / VOLUME_BLOCKS
+        lit = round(self.volume * VOLUME_BLOCKS)
+        if inner_h > 0.0:
             painter.setPen(Qt.NoPen)
             painter.setBrush(color)
-            painter.drawRect(int(x + pad_x), int(y + pad_y), int(inner_w), int(inner_h))
+            for i in range(lit):
+                painter.drawRect(QRectF(x + pad_x + i * step, y + pad_y, step * 0.7, inner_h))
+
+        # and the level as a number beside it
+        painter.setFont(resolve_font(None, int(h * 1.6)))
+        painter.setPen(color)
+        painter.drawText(QPointF(x + w + h * 0.5, y + h * 0.85), str(round(self.volume * 100)))
+
+
+    def draw_mute(self, painter: QPainter, screen_w: float, screen_h: float):
+        """A crossed-out speaker and MUTE, where the volume bar would be."""
+        size = frac_to_size_px(self.config.height, screen_h) * 2.5
+        font = resolve_font(None, int(size * 1.2))
+        painter.setFont(font)
+        text_w = painter.fontMetrics().horizontalAdvance("MUTE")
+        w = size * 1.5 + text_w
+        x_margin_px = frac_to_margin_px(self.config.x_margin, screen_w)
+        y_margin_px = frac_to_margin_px(self.config.y_margin, screen_h)
+        x, y = resolve_top_left(
+            screen_w, screen_h, w, size,
+            self.config.halign, self.config.valign,
+            x_margin_px, y_margin_px,
+        )
+
+        color = QColor(*self.config.color)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(color)
+        # the speaker: a box and its cone
+        painter.drawRect(QRectF(x, y + size * 0.3, size * 0.3, size * 0.4))
+        painter.drawPolygon(QPolygonF([QPointF(x + size * 0.3, y + size * 0.3), QPointF(x + size * 0.65, y),
+                                       QPointF(x + size * 0.65, y + size), QPointF(x + size * 0.3, y + size * 0.7)]))
+        # the cross
+        painter.setPen(QPen(color, max(2.0, size * 0.1)))
+        painter.drawLine(QPointF(x + size * 0.8, y + size * 0.3), QPointF(x + size * 1.2, y + size * 0.7))
+        painter.drawLine(QPointF(x + size * 0.8, y + size * 0.7), QPointF(x + size * 1.2, y + size * 0.3))
+        painter.drawText(QPointF(x + size * 1.5, y + size * 0.85), "MUTE")
 
 
 def load_objects() -> list:
